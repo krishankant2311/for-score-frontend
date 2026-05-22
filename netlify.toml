@@ -1,0 +1,12 @@
+# Next.js admin (App Router + dynamic routes) — requires Netlify Next runtime.
+# Site settings → Build: base directory = FOUR-Score-main (if repo root is four_score).
+
+[build]
+  command = "npm run build"
+  # Do not set publish — @netlify/plugin-nextjs handles Next.js output.
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NODE_VERSION = "20"
