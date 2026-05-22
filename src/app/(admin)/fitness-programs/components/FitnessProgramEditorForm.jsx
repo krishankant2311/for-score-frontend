@@ -215,8 +215,11 @@ function createEmptyWorkoutExercise() {
     notes: "",
     time_minutes: "",
     estimated_calories: "",
+    thumbnail_url: "",
+    /** `{ blobUrl, file }` — maps to `library_media` target `{letter}.{idx}.thumbnail_url` */
+    thumbnailPending: null,
     mediaUrls: [],
-    /** `{ blobUrl, file }[]` — sent as `library_media` + `library_media_targets` on save */
+    /** `{ blobUrl, file }[]` — video / extra images via `library_media` */
     pendingUploads: [],
   };
 }
@@ -775,7 +778,101 @@ export default function FitnessProgramEditorForm({
       } catch {
         /* ignore */
       }
-      return { ...d, programPosterPending: null };
+      return { ...d, programPosterPending: null, programThumbnailUrl: "" };
+    });
+  };
+
+  const handleWorkoutMetaThumbnailPick = (letter, e) => {
+    const input = e.target;
+    const f = input.files?.[0];
+    if (input) input.value = "";
+    if (!f || !draft) return;
+    const t = String(f.type || "");
+    const ok =
+      t.startsWith("image/") || /\.(gif|jpe?g|png|webp|bmp|heic|avif)$/i.test(String(f.name || ""));
+    if (!ok) {
+      toast.error("Please choose an image for the workout thumbnail.");
+      return;
+    }
+    setDraft((d) => {
+      if (!d) return d;
+      const meta =
+        d.workoutsMeta && typeof d.workoutsMeta === "object" ? { ...d.workoutsMeta } : {};
+      const cur = meta[letter] && typeof meta[letter] === "object" ? { ...meta[letter] } : createEmptyWorkoutMeta();
+      try {
+        const old = cur.thumbnailPending?.blobUrl;
+        if (old?.startsWith("blob:")) URL.revokeObjectURL(old);
+      } catch {
+        /* ignore */
+      }
+      meta[letter] = {
+        ...cur,
+        thumbnailPending: { file: f, blobUrl: URL.createObjectURL(f) },
+      };
+      return { ...d, workoutsMeta: meta };
+    });
+  };
+
+  const clearWorkoutMetaThumbnail = (letter) => {
+    setDraft((d) => {
+      if (!d) return d;
+      const meta =
+        d.workoutsMeta && typeof d.workoutsMeta === "object" ? { ...d.workoutsMeta } : {};
+      const cur = meta[letter] && typeof meta[letter] === "object" ? { ...meta[letter] } : createEmptyWorkoutMeta();
+      try {
+        const old = cur.thumbnailPending?.blobUrl;
+        if (old?.startsWith("blob:")) URL.revokeObjectURL(old);
+      } catch {
+        /* ignore */
+      }
+      meta[letter] = { ...cur, thumbnail_url: "", thumbnailPending: null };
+      return { ...d, workoutsMeta: meta };
+    });
+  };
+
+  const handleExerciseThumbnailPick = (letter, rowIndex, e) => {
+    const input = e.target;
+    const f = input.files?.[0];
+    if (input) input.value = "";
+    if (!f || !draft) return;
+    const t = String(f.type || "");
+    const ok =
+      t.startsWith("image/") || /\.(gif|jpe?g|png|webp|bmp|heic|avif)$/i.test(String(f.name || ""));
+    if (!ok) {
+      toast.error("Please choose an image for the exercise thumbnail.");
+      return;
+    }
+    setDraft((d) => {
+      if (!d) return d;
+      const rows = [...(d.workouts?.[letter] ?? [])];
+      const cur = rows[rowIndex] ?? {};
+      try {
+        const old = cur.thumbnailPending?.blobUrl;
+        if (old?.startsWith("blob:")) URL.revokeObjectURL(old);
+      } catch {
+        /* ignore */
+      }
+      rows[rowIndex] = {
+        ...cur,
+        thumbnailPending: { file: f, blobUrl: URL.createObjectURL(f) },
+      };
+      return { ...d, workouts: { ...d.workouts, [letter]: rows } };
+    });
+  };
+
+  const clearExerciseThumbnail = (letter, rowIndex) => {
+    setDraft((d) => {
+      if (!d) return d;
+      const rows = [...(d.workouts?.[letter] ?? [])];
+      const cur = rows[rowIndex] ?? {};
+      try {
+        const old = cur.thumbnailPending?.blobUrl;
+        if (old?.startsWith("blob:")) URL.revokeObjectURL(old);
+      } catch {
+        /* ignore */
+      }
+      rows[rowIndex] = { ...cur, thumbnail_url: "", thumbnailPending: null };
+      return { ...d, workouts: { ...d.workouts, [letter]: rows } };
     });
   };
 
@@ -1559,7 +1656,11 @@ export default function FitnessProgramEditorForm({
                     ) : null}
                   </div>
                   <div>
-                    <label className={lbl}>Poster / cover image (multipart field: media)</label>
+                    <label className={lbl}>Program thumbnail (cover)</label>
+                    <p className="mt-0.5 text-[10px] text-[#5671A6]">
+                      Shown on the program card in the app. Saved as{" "}
+                      <span className="font-mono">media</span> + <span className="font-mono">thumbnail_url</span>.
+                    </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-2">
                       <input
                         type="file"
@@ -1567,7 +1668,7 @@ export default function FitnessProgramEditorForm({
                         className="max-w-full text-xs text-[#2158A3] file:mr-2 file:rounded-lg file:border-0 file:bg-[#0A3161] file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white"
                         onChange={handleProgramPosterPick}
                       />
-                      {draft.programPosterPending?.file ? (
+                      {draft.programPosterPending?.file || draft.programThumbnailUrl ? (
                         <Button type="button" variant="outline" size="sm" onClick={clearProgramPoster}>
                           Remove
                         </Button>
@@ -1575,6 +1676,14 @@ export default function FitnessProgramEditorForm({
                     </div>
                     {draft.programPosterPending?.file ? (
                       <p className="mt-1 text-xs text-[#5671A6]">{draft.programPosterPending.file.name}</p>
+                    ) : null}
+                    {draft.programPosterPending?.blobUrl || draft.programThumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={draft.programPosterPending?.blobUrl || draft.programThumbnailUrl}
+                        alt="Program thumbnail preview"
+                        className="mt-2 h-20 w-32 rounded-lg border border-[#DCE7F5] object-cover"
+                      />
                     ) : null}
                   </div>
                 </div>
@@ -2228,6 +2337,43 @@ export default function FitnessProgramEditorForm({
                       </div>
                     </div> */}
 
+                    <div className="mb-4 rounded-xl border border-[#DCE7F5] bg-[#FAFCFF] p-3">
+                      <label className={lbl}>Workout thumbnail (Workout {letter})</label>
+                      <p className="mt-0.5 text-[10px] text-[#5671A6]">
+                        Cover image for this workout block in the app. Upload →{" "}
+                        <span className="font-mono">workout_meta_media</span> →{" "}
+                        <span className="font-mono">{letter}.thumbnail_url</span>
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="max-w-full text-xs text-[#2158A3] file:mr-2 file:rounded-lg file:border-0 file:bg-[#0A3161] file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white"
+                          onChange={(e) => handleWorkoutMetaThumbnailPick(letter, e)}
+                        />
+                        {meta.thumbnailPending?.file || meta.thumbnail_url ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => clearWorkoutMetaThumbnail(letter)}
+                          >
+                            Remove
+                          </Button>
+                        ) : null}
+                        {meta.thumbnailPending?.blobUrl || meta.thumbnail_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={meta.thumbnailPending?.blobUrl || meta.thumbnail_url}
+                            alt={`Workout ${letter} thumbnail`}
+                            className="h-16 w-24 rounded-lg border border-[#DCE7F5] object-cover"
+                          />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No thumbnail yet</span>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="overflow-hidden rounded-xl border border-[#C8D7E9] bg-white shadow-sm">
                       <Table>
                         <TableHeader>
@@ -2246,7 +2392,7 @@ export default function FitnessProgramEditorForm({
                               Rep range <ReqMark />
                             </TableHead>
                             <TableHead className="min-w-[180px] px-2 py-3 text-[#2158A3] font-semibold">
-                              Media
+                              Media (video)
                             </TableHead>
                           </TableRow>
                         </TableHeader>
@@ -2348,9 +2494,9 @@ export default function FitnessProgramEditorForm({
                                 <TableCell className="p-2 align-top">
                                   <div className="rounded-xl border border-[#DCE7F5] bg-white px-2.5 py-2 shadow-[0_1px_2px_rgba(10,49,97,0.05)]">
                                     <p className="mb-1.5 text-[10px] leading-snug text-[#5671A6]">
-                                      Uploads are sent as{" "}
-                                      <span className="font-mono text-[10px] text-[#0A3161]">library_media</span> with
-                                      JSON targets (thumbnail / video).
+                                      Exercise video / extra images via{" "}
+                                      <span className="font-mono text-[10px] text-[#0A3161]">library_media</span>.
+                                      Thumbnail is set separately below.
                                     </p>
                                     <div className="flex items-center gap-2">
                                       <label className="inline-flex h-8 min-w-[102px] cursor-pointer items-center justify-center rounded-md border border-[#BDD2EE] bg-[#EEF5FF] px-3 text-[11px] font-semibold text-[#0A3161] transition hover:bg-[#E1EEFF]">
@@ -2423,6 +2569,47 @@ export default function FitnessProgramEditorForm({
                               </TableRow>
                               <TableRow className="border-b border-[#EEF2F7] bg-[#FAFCFF]/80">
                                 <TableCell colSpan={6} className="px-3 py-3 align-top">
+                                  <div className="mb-3 rounded-lg border border-[#E8EEF4] bg-white p-3">
+                                    <label className="block text-xs font-medium text-[#5671A6] mb-1">
+                                      Exercise thumbnail
+                                    </label>
+                                    <p className="mb-2 text-[10px] text-[#94a3b8]">
+                                      One image per exercise (saved to{" "}
+                                      <span className="font-mono">exerciseLibrary.{letter}[n].thumbnail_url</span>).
+                                    </p>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <label className="inline-flex h-8 cursor-pointer items-center justify-center rounded-md border border-[#BDD2EE] bg-[#EEF5FF] px-3 text-[11px] font-semibold text-[#0A3161] hover:bg-[#E1EEFF]">
+                                        Upload thumbnail
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          className="sr-only"
+                                          onChange={(e) => handleExerciseThumbnailPick(letter, i, e)}
+                                        />
+                                      </label>
+                                      {ex.thumbnailPending?.file || ex.thumbnail_url ? (
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-8 text-xs"
+                                          onClick={() => clearExerciseThumbnail(letter, i)}
+                                        >
+                                          Remove
+                                        </Button>
+                                      ) : null}
+                                      {ex.thumbnailPending?.blobUrl || ex.thumbnail_url ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                          src={ex.thumbnailPending?.blobUrl || ex.thumbnail_url}
+                                          alt={`${ex.name || "Exercise"} thumbnail`}
+                                          className="h-14 w-20 rounded border border-[#DCE7F5] object-cover"
+                                        />
+                                      ) : (
+                                        <span className="text-[10px] text-muted-foreground">No thumbnail</span>
+                                      )}
+                                    </div>
+                                  </div>
                                   {/* Time / calories + role / tempo / rest / alternative / notes */}
                                   <div className="mb-3 grid gap-3 sm:grid-cols-2">
                                     <div>

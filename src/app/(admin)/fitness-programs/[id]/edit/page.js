@@ -15,6 +15,7 @@ import {
   decodeEmailFromJwt,
   mergePendingWorkoutsFromPrevious,
   prepareWorkoutsMediaUploads,
+  prepareWorkoutMetaThumbnails,
   programEditKey,
   fetchProgramRawById,
   validateFitnessProgramForSave,
@@ -110,13 +111,14 @@ export default function EditFitnessProgramPage() {
     try {
       const emailFromToken = decodeEmailFromJwt(token);
       const workoutsForSave = await prepareWorkoutsMediaUploads(draft.workouts);
+      const workoutsMetaForSave = await prepareWorkoutMetaThumbnails(draft.workoutsMeta);
       if (workoutsHaveUnresolvedBlobMedia(workoutsForSave)) {
         toast.error(
           "Workout media could not be read for upload. Remove the previews, re-upload the video, then save again."
         );
         return;
       }
-      const payloadForSave = { ...draft, workouts: workoutsForSave };
+      const payloadForSave = { ...draft, workouts: workoutsForSave, workoutsMeta: workoutsMetaForSave };
 
       const buildFormData = () => {
         const formData = new FormData();

@@ -707,6 +707,22 @@ export function apiRowToEditorDraft(raw, emptyTemplate) {
 
   merged.programIntroVideoPending = null;
   merged.programPosterPending = null;
+  merged.programThumbnailUrl = coercePlainString(
+    raw?.thumbnail_url ??
+      parsed?.programThumbnailUrl ??
+      parsed?.thumbnail_url ??
+      merged.programThumbnailUrl ??
+      ""
+  );
+
+  if (merged.workoutsMeta && typeof merged.workoutsMeta === "object") {
+    for (const L of ["A", "B", "C"]) {
+      if (!merged.workoutsMeta[L] || typeof merged.workoutsMeta[L] !== "object") {
+        merged.workoutsMeta[L] = { ...(merged.workoutsMeta[L] || {}), thumbnail_url: "" };
+      }
+      merged.workoutsMeta[L].thumbnailPending = null;
+    }
+  }
 
   return merged;
 }
@@ -727,6 +743,8 @@ export function apiExerciseRowToUi(ex) {
   const emptyRow = {
     name: "",
     tag: "Large Muscle",
+    thumbnail_url: "",
+    thumbnailPending: null,
     mediaUrls: [],
     pendingUploads: [],
     target_sets: "",
@@ -747,10 +765,15 @@ export function apiExerciseRowToUi(ex) {
     return { ...emptyRow, name: s };
   }
   const name = String(ex.name ?? "").trim();
+  const thumb = String(ex.thumbnail_url ?? ex.thumbnailUrl ?? "").trim();
   const urls = [];
   if (ex.video_url) urls.push(String(ex.video_url));
-  if (ex.thumbnail_url) urls.push(String(ex.thumbnail_url));
-  if (Array.isArray(ex.mediaUrls)) urls.push(...ex.mediaUrls.map(String).filter(Boolean));
+  if (ex.videoUrl) urls.push(String(ex.videoUrl));
+  if (Array.isArray(ex.mediaUrls)) {
+    for (const u of ex.mediaUrls.map(String).filter(Boolean)) {
+      if (u && u !== thumb) urls.push(u);
+    }
+  }
   const tagFromMuscles =
     Array.isArray(ex.target_muscles) && ex.target_muscles.length
       ? String(ex.target_muscles[0])
@@ -762,6 +785,8 @@ export function apiExerciseRowToUi(ex) {
   const row = {
     name,
     tag,
+    thumbnail_url: thumb,
+    thumbnailPending: null,
     mediaUrls: urls.filter(Boolean),
   };
 
@@ -1123,6 +1148,29 @@ export function validateFitnessProgramMobilePayload(draft) {
   return validateFitnessProgramForSave(draft);
 }
 
+/** Strip workout-meta `thumbnailPending` before JSON persist. */
+function sanitizeWorkoutsMetaForProgramDetail(workoutsMeta) {
+  if (!workoutsMeta || typeof workoutsMeta !== "object" || Array.isArray(workoutsMeta)) {
+    return workoutsMeta;
+  }
+  /** @type {Record<string, unknown>} */
+  const out = {};
+  for (const L of ["A", "B", "C"]) {
+    const meta = workoutsMeta[L];
+    if (!meta || typeof meta !== "object" || Array.isArray(meta)) {
+      out[L] = meta;
+      continue;
+    }
+    const { thumbnailPending, ...rest } = meta;
+    const thumb = String(rest.thumbnail_url ?? "").trim();
+    out[L] = {
+      ...rest,
+      thumbnail_url: thumb && !thumb.startsWith("blob:") ? thumb : "",
+    };
+  }
+  return out;
+}
+
 /** Strip exercise `pendingUploads` and blob preview URLs from persisted JSON. */
 function sanitizeWorkoutsForProgramDetail(workouts) {
   if (!workouts || typeof workouts !== "object" || Array.isArray(workouts)) return workouts;
@@ -1136,11 +1184,16 @@ function sanitizeWorkoutsForProgramDetail(workouts) {
     }
     out[L] = list.map((ex) => {
       if (!ex || typeof ex !== "object" || Array.isArray(ex)) return ex;
-      const { pendingUploads, ...rest } = ex;
+      const { pendingUploads, thumbnailPending, ...rest } = ex;
       const mediaUrls = Array.isArray(rest.mediaUrls)
         ? rest.mediaUrls.filter((u) => typeof u === "string" && u.trim() && !String(u).startsWith("blob:"))
         : [];
-      return { ...rest, mediaUrls };
+      const thumb = String(rest.thumbnail_url ?? "").trim();
+      return {
+        ...rest,
+        thumbnail_url: thumb && !thumb.startsWith("blob:") ? thumb : "",
+        mediaUrls,
+      };
     });
   }
   return out;
@@ -1188,9 +1241,43 @@ export function workoutsHaveUnresolvedBlobMedia(workouts) {
         const hasFile = pend.some((p) => p?.blobUrl === url && p?.file instanceof File);
         if (!hasFile) return true;
       }
+      const thumbUrl = String(row?.thumbnail_url ?? "");
+      if (thumbUrl.startsWith("blob:")) {
+        const tp = row?.thumbnailPending;
+        if (!(tp?.file instanceof File) && tp?.blobUrl !== thumbUrl) return true;
+        if (!(tp?.file instanceof File)) return true;
+      }
     }
   }
   return false;
+}
+
+export async function prepareWorkoutMetaThumbnails(workoutsMeta) {
+  if (!workoutsMeta || typeof workoutsMeta !== "object" || Array.isArray(workoutsMeta)) {
+    return workoutsMeta;
+  }
+  const out = { ...workoutsMeta };
+  for (const letter of ["A", "B", "C"]) {
+    const meta = out[letter];
+    if (!meta || typeof meta !== "object") continue;
+    const cur = { ...meta };
+    const blobUrl = cur.thumbnailPending?.blobUrl;
+    if (cur.thumbnailPending?.file instanceof File) {
+      out[letter] = cur;
+      continue;
+    }
+    const url = String(cur.thumbnail_url ?? blobUrl ?? "");
+    if (url.startsWith("blob:")) {
+      try {
+        const file = await blobUrlToFile(url, `workout_meta_${letter}.jpg`);
+        cur.thumbnailPending = { blobUrl: url, file };
+      } catch (e) {
+        console.warn("Could not read workout meta thumbnail blob:", url, e);
+      }
+    }
+    out[letter] = cur;
+  }
+  return out;
 }
 
 export async function prepareWorkoutsMediaUploads(workouts) {
@@ -1227,7 +1314,18 @@ export async function prepareWorkoutsMediaUploads(workouts) {
         }
       }
 
-      list[idx] = { ...row, pendingUploads: pend };
+      let thumbPend = row.thumbnailPending;
+      const thumbUrl = String(row.thumbnail_url ?? thumbPend?.blobUrl ?? "");
+      if (!(thumbPend?.file instanceof File) && thumbUrl.startsWith("blob:")) {
+        try {
+          const file = await blobUrlToFile(thumbUrl, `exercise_${letter}_${idx}_thumb.jpg`);
+          thumbPend = { blobUrl: thumbUrl, file };
+        } catch (e) {
+          console.warn("Could not read exercise thumbnail blob:", thumbUrl, e);
+        }
+      }
+
+      list[idx] = { ...row, pendingUploads: pend, thumbnailPending: thumbPend ?? row.thumbnailPending };
     }
     out[letter] = list;
   }
@@ -1263,6 +1361,23 @@ export function mergePendingWorkoutsFromPrevious(prev, next) {
  * (paths like `A.0.thumbnail_url` — backend merges uploaded URLs into `exerciseLibrary`).
  * Uses the same compacted index as `workoutsToExerciseLibraryPayload` (skips unnamed rows).
  */
+function collectWorkoutMetaMultipart(workoutsMeta) {
+  /** @type {File[]} */
+  const files = [];
+  /** @type {string[]} */
+  const targets = [];
+  if (!workoutsMeta || typeof workoutsMeta !== "object") return { files, targets };
+  for (const letter of ["A", "B", "C"]) {
+    const meta = workoutsMeta[letter];
+    const file = meta?.thumbnailPending?.file;
+    if (file instanceof File) {
+      files.push(file);
+      targets.push(`${letter}.thumbnail_url`);
+    }
+  }
+  return { files, targets };
+}
+
 function collectLibraryMultipart(workouts) {
   /** @type {File[]} */
   const files = [];
@@ -1280,6 +1395,15 @@ function collectLibraryMultipart(workouts) {
       const pend = Array.isArray(row?.pendingUploads) ? row.pendingUploads : [];
       const used = new Set();
       let mediaExtra = 0;
+
+      const thumbFile = row?.thumbnailPending?.file;
+      if (thumbFile instanceof File) {
+        const path = `${letter}.${libIdx}.thumbnail_url`;
+        used.add(path);
+        files.push(thumbFile);
+        targets.push(path);
+      }
+
       for (const item of pend) {
         const file = item?.file;
         if (!(file instanceof File)) continue;
@@ -1473,6 +1597,20 @@ export function appendProgramFields(formData, payload) {
     formData.append("library_media_targets", JSON.stringify(libraryTargets));
   }
 
+  const workoutsMetaPayload =
+    payload?.workoutsMeta && typeof payload.workoutsMeta === "object"
+      ? sanitizeWorkoutsMetaForProgramDetail(payload.workoutsMeta)
+      : null;
+  const { files: metaFiles, targets: metaTargets } = collectWorkoutMetaMultipart(
+    payload?.workoutsMeta
+  );
+  for (const f of metaFiles) {
+    formData.append("workout_meta_media", f);
+  }
+  if (metaTargets.length) {
+    formData.append("workout_meta_media_targets", JSON.stringify(metaTargets));
+  }
+
   const introVid = payload?.programIntroVideoPending?.file;
   if (introVid instanceof File) {
     formData.append("video", introVid);
@@ -1480,6 +1618,10 @@ export function appendProgramFields(formData, payload) {
   const introPoster = payload?.programPosterPending?.file;
   if (introPoster instanceof File) {
     formData.append("media", introPoster);
+  }
+  const programThumbUrl = String(payload?.programThumbnailUrl ?? "").trim();
+  if (programThumbUrl && !programThumbUrl.startsWith("blob:")) {
+    formData.append("thumbnail_url", programThumbUrl);
   }
 
   /**
@@ -1499,7 +1641,8 @@ export function appendProgramFields(formData, payload) {
     progressTracking: payload?.progressTracking ?? null,
     phaseStructure: payload?.phaseStructure ?? null,
     frequencyRules: payload?.frequencyRules ?? null,
-    workoutsMeta: payload?.workoutsMeta ?? null,
+    workoutsMeta: workoutsMetaPayload ?? payload?.workoutsMeta ?? null,
+    programThumbnailUrl: programThumbUrl || payload?.programThumbnailUrl || "",
     engineSettings: payload?.engineSettings ?? null,
     recoveryBlocks: Array.isArray(payload?.recoveryBlocks) ? payload.recoveryBlocks : [],
     restDayConfig: payload?.restDayConfig ?? null,

@@ -163,6 +163,8 @@ export const DEFAULT_PROGRAM_LOGIC = {
 /** Empty per-workout meta (used for A/B/C) — overload grid is built lazily by the form */
 export function createEmptyWorkoutMeta() {
   return {
+    thumbnail_url: "",
+    thumbnailPending: null,
     format: "Standard sets",
     workInterval: "",
     restBetweenSets: "",
