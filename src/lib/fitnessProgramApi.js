@@ -765,13 +765,18 @@ export function apiExerciseRowToUi(ex) {
     return { ...emptyRow, name: s };
   }
   const name = String(ex.name ?? "").trim();
-  const thumb = String(ex.thumbnail_url ?? ex.thumbnailUrl ?? "").trim();
+  const video = String(ex.video_url ?? ex.videoUrl ?? "").trim();
+  let thumb = String(ex.thumbnail_url ?? ex.thumbnailUrl ?? "").trim();
+  if (thumb && (thumb === video || isVideoMediaUrlString(thumb))) thumb = "";
+
   const urls = [];
-  if (ex.video_url) urls.push(String(ex.video_url));
-  if (ex.videoUrl) urls.push(String(ex.videoUrl));
+  if (video) urls.push(video);
   if (Array.isArray(ex.mediaUrls)) {
     for (const u of ex.mediaUrls.map(String).filter(Boolean)) {
-      if (u && u !== thumb) urls.push(u);
+      const s = String(u).trim();
+      if (!s || s === thumb || s === video) continue;
+      if (isVideoMediaUrlString(s) && !urls.includes(s)) urls.push(s);
+      else if (!isImageMediaUrlString(s) && !urls.includes(s)) urls.push(s);
     }
   }
   const tagFromMuscles =
@@ -854,6 +859,15 @@ function slugifySlotKey(segment) {
   return s.slice(0, 48) || "exercise";
 }
 
+function isVideoMediaUrlString(url) {
+  return /\.(mp4|webm|ogg|mov|m4v|mkv|avi)(\?|#|$)/i.test(String(url || "").trim());
+}
+
+function isImageMediaUrlString(url) {
+  return /\.(png|jpe?g|gif|webp|svg|bmp|heic|avif)(\?|#|$)/i.test(String(url || "").trim());
+}
+
+/** Legacy helper — only classifies extra mediaUrls; never treats video as thumbnail. */
 function pickVideoThumbnailFromUrls(urls) {
   let video_url = "";
   let thumbnail_url = "";
@@ -861,17 +875,11 @@ function pickVideoThumbnailFromUrls(urls) {
   for (const u of list) {
     const s = String(u).trim();
     if (!s || s.startsWith("blob:")) continue;
-    if (/\.(mp4|webm|ogg|mov|m4v|mkv|avi)(\?|#|$)/i.test(s)) {
+    if (isVideoMediaUrlString(s)) {
       if (!video_url) video_url = s;
-    } else if (/\.(png|jpe?g|gif|webp|svg|bmp|heic|avif)(\?|#|$)/i.test(s)) {
+    } else if (isImageMediaUrlString(s)) {
       if (!thumbnail_url) thumbnail_url = s;
-    } else if (/\/uploads\//i.test(s)) {
-      if (!video_url) video_url = s;
     }
-  }
-  if (!video_url && !thumbnail_url && list[0]) {
-    const first = String(list[0]).trim();
-    if (first && !first.startsWith("blob:")) thumbnail_url = first;
   }
   return { video_url, thumbnail_url };
 }
@@ -955,10 +963,20 @@ function buildWeekGridPayload(page2, schedule) {
 
 function uiExerciseToLibraryObject(ex, letter, idx, fallbackDifficulty) {
   const nameRaw = String(ex?.name ?? "").trim();
+  const thumbExplicit = String(ex?.thumbnail_url ?? ex?.thumbnailUrl ?? "").trim();
+  const videoExplicit = String(ex?.video_url ?? ex?.videoUrl ?? "").trim();
   const urls = Array.isArray(ex?.mediaUrls)
-    ? ex.mediaUrls.filter(Boolean).map(String).filter((u) => u && !u.startsWith("blob:"))
+    ? ex.mediaUrls
+        .filter(Boolean)
+        .map(String)
+        .filter((u) => u && !u.startsWith("blob:") && u !== thumbExplicit && u !== videoExplicit)
     : [];
-  const { video_url, thumbnail_url } = pickVideoThumbnailFromUrls(urls);
+  const picked = pickVideoThumbnailFromUrls(urls);
+  let video_url = videoExplicit || picked.video_url;
+  let thumbnail_url = thumbExplicit || picked.thumbnail_url;
+  if (thumbnail_url && (thumbnail_url === video_url || isVideoMediaUrlString(thumbnail_url))) {
+    thumbnail_url = thumbExplicit && !isVideoMediaUrlString(thumbExplicit) ? thumbExplicit : "";
+  }
   const fromSlot = String(ex?.slotKey ?? "").trim();
   const slotKey =
     fromSlot ||
@@ -1026,15 +1044,17 @@ function uiExerciseToLibraryObject(ex, letter, idx, fallbackDifficulty) {
     if (cal >= 0) o.estimated_calories = cal;
   }
 
-  const allUrls = [...new Set([video_url, thumbnail_url, ...urls].filter(Boolean))];
-  if (allUrls.length) o.mediaUrls = allUrls;
+  const mediaOnly = [...new Set([video_url, ...urls].filter(Boolean))];
+  if (mediaOnly.length) o.mediaUrls = mediaOnly;
 
   if (video_url) {
     o.video_url = video_url;
     o.media_type = String(ex.media_type || ex.mediaType || "video");
     o.mediaType = o.media_type;
   }
-  if (thumbnail_url) o.thumbnail_url = thumbnail_url;
+  if (thumbnail_url && !isVideoMediaUrlString(thumbnail_url)) {
+    o.thumbnail_url = thumbnail_url;
+  }
 
   const alt = String(ex.alternative ?? ex.alternative_exercise ?? "").trim();
   if (alt) {
@@ -1404,20 +1424,21 @@ function collectLibraryMultipart(workouts) {
         targets.push(path);
       }
 
+      // Media column = video / extra files only — never overwrite dedicated exercise thumbnail.
       for (const item of pend) {
         const file = item?.file;
         if (!(file instanceof File)) continue;
-        const wantVideo = isVideoLikeFile(file);
-        let field = wantVideo ? "video_url" : "thumbnail_url";
         const mime = String(file.type || item?.type || "").toLowerCase();
-        if (mime.startsWith("image/")) field = "thumbnail_url";
-        else if (mime.startsWith("video/")) field = "video_url";
-        let path = `${letter}.${libIdx}.${field}`;
-        if (used.has(path)) {
-          field = field === "video_url" ? "thumbnail_url" : "video_url";
-          path = `${letter}.${libIdx}.${field}`;
-        }
-        if (used.has(path)) {
+        const isVideo = mime.startsWith("video/") || isVideoLikeFile(file);
+
+        let path;
+        if (isVideo) {
+          const videoPath = `${letter}.${libIdx}.video_url`;
+          path = used.has(videoPath)
+            ? `${letter}.${libIdx}.mediaUrls.${mediaExtra}`
+            : videoPath;
+          if (used.has(videoPath)) mediaExtra += 1;
+        } else {
           path = `${letter}.${libIdx}.mediaUrls.${mediaExtra}`;
           mediaExtra += 1;
         }
