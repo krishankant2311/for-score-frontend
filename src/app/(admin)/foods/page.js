@@ -40,7 +40,7 @@ function mapFoodRow(f) {
     protein: f.protein ?? 0,
     carbs: f.carbs ?? 0,
     fats: f.fats ?? 0,
-    imageUrl: f.imageUrl || "",
+    image: f.image || "",
     status: f.status || "Active",
     createdAt: f.createdAt ? new Date(f.createdAt).toISOString().slice(0, 10) : "",
   };
@@ -205,8 +205,8 @@ export default function FoodsPage() {
                 <TableRow key={f.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
-                      {f.imageUrl ? (
-                        <img src={f.imageUrl} alt="" className="h-9 w-9 rounded-lg object-cover" />
+                      {f.image ? (
+                        <img src={f.image} alt="" className="h-9 w-9 rounded-lg object-cover" />
                       ) : (
                         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0A3161]/10 text-[#0A3161]">
                           <LuApple className="h-4 w-4" />

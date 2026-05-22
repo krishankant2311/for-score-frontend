@@ -21,7 +21,7 @@ export default function EditFoodPage() {
   const [protein, setProtein] = useState("");
   const [carbs, setCarbs] = useState("");
   const [fats, setFats] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [image, setImage] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -43,7 +43,7 @@ export default function EditFoodPage() {
         setProtein(String(f.protein ?? ""));
         setCarbs(String(f.carbs ?? ""));
         setFats(String(f.fats ?? ""));
-        setImageUrl(f.imageUrl || "");
+        setImage(f.image || "");
       } catch (err) {
         toast.error(err?.message || "Failed to load food");
         router.push("/foods");
@@ -130,8 +130,8 @@ export default function EditFoodPage() {
             </div>
           ))}
         </div>
-        {imageUrl && !imageFile && (
-          <img src={imageUrl} alt="" className="h-20 w-20 rounded-xl object-cover" />
+        {image && !imageFile && (
+          <img src={image} alt="" className="h-20 w-20 rounded-xl object-cover" />
         )}
         <div>
           <button type="button" onClick={() => fileRef.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-6">
