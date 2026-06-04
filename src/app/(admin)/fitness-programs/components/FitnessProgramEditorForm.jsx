@@ -31,6 +31,19 @@ import {
   validateWorkoutsTab,
   validateWorkoutBlockBeforeAddExercise,
   validateRecoveryBlockBeforeAddStretch,
+  EXERCISE_TAG_OPTIONS,
+  MAX_EXERCISE_NAME_LEN,
+  MAX_EXERCISE_SETS,
+  MAX_REP_RANGE_LEN,
+  MAX_EXERCISE_CALORIES,
+  MAX_EXERCISE_TIME_MINUTES,
+  MAX_INSTRUCTIONS_LEN,
+  clampExerciseName,
+  clampExerciseSets,
+  clampRepRangeInput,
+  clampExerciseTimeMinutes,
+  clampExerciseCalories,
+  clampInstructionsText,
 } from "@/lib/fitnessProgramApi";
 import { FormSection, lbl, choiceChip } from "./FormSection";
 import { ensureProgramLogicDefaults, createEmptyWorkoutMeta } from "../data";
@@ -203,24 +216,7 @@ function tabIndex(id) {
 }
 
 const LEVEL_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
-const TAG_OPTIONS = ["Large Muscle", "Primary Strength", "Accessory", "Core"];
-
-const MAX_EXERCISE_TIME_MINUTES = 60;
-const MAX_EXERCISE_CALORIES = 9999;
-
-function clampExerciseTimeMinutes(value) {
-  if (value === "" || value == null) return "";
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "";
-  return Math.min(MAX_EXERCISE_TIME_MINUTES, Math.max(0, Math.floor(n)));
-}
-
-function clampExerciseCalories(value) {
-  if (value === "" || value == null) return "";
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "";
-  return Math.min(MAX_EXERCISE_CALORIES, Math.max(0, Math.floor(n)));
-}
+const TAG_OPTIONS = EXERCISE_TAG_OPTIONS;
 
 function createEmptyWorkoutExercise() {
   return {
@@ -2444,10 +2440,7 @@ export default function FitnessProgramEditorForm({
                         </TableHeader>
                         <TableBody>
                           {draft.workouts[letter].map((ex, i) => {
-                            const tagChoices =
-                              ex.tag && !TAG_OPTIONS.includes(ex.tag)
-                                ? [ex.tag, ...TAG_OPTIONS]
-                                : TAG_OPTIONS;
+                            const tagValue = TAG_OPTIONS.includes(ex.tag) ? ex.tag : TAG_OPTIONS[0];
                             const mediaKey = `${letter}-${i}`;
                             const mediaUrls = Array.isArray(ex?.mediaUrls) ? ex.mediaUrls : [];
                             return (
@@ -2479,20 +2472,32 @@ export default function FitnessProgramEditorForm({
                                     </Button>
                                   </div>
                                 </TableCell>
-                                <TableCell className="p-2 align-middle">
+                                <TableCell className="p-2 align-middle max-w-[220px]">
                                   <Input
                                     value={ex.name}
-                                    onChange={(e) => updateWorkoutExercise(letter, i, "name", e.target.value)}
+                                    maxLength={MAX_EXERCISE_NAME_LEN}
+                                    autoComplete="off"
+                                    onChange={(e) =>
+                                      updateWorkoutExercise(
+                                        letter,
+                                        i,
+                                        "name",
+                                        clampExerciseName(e.target.value)
+                                      )
+                                    }
                                     className="h-10 border-[#C8D7E9] bg-white rounded-lg text-sm"
                                   />
+                                  <p className="mt-0.5 text-[10px] text-[#94a3b8]">
+                                    Max {MAX_EXERCISE_NAME_LEN} chars (APK)
+                                  </p>
                                 </TableCell>
-                                <TableCell className="p-2 align-middle">
+                                <TableCell className="p-2 align-middle max-w-[200px]">
                                   <select
-                                    value={ex.tag}
+                                    value={tagValue}
                                     onChange={(e) => updateWorkoutExercise(letter, i, "tag", e.target.value)}
-                                    className="h-10 w-full rounded-lg border border-[#C8D7E9] bg-white px-3 text-sm text-[#0A3161] outline-none focus:ring-2 focus:ring-[#0A3161]/25"
+                                    className="h-10 w-full max-w-full truncate rounded-lg border border-[#C8D7E9] bg-white px-3 text-sm text-[#0A3161] outline-none focus:ring-2 focus:ring-[#0A3161]/25"
                                   >
-                                    {tagChoices.map((t) => (
+                                    {TAG_OPTIONS.map((t) => (
                                       <option key={t} value={t}>
                                         {t}
                                       </option>
@@ -2503,6 +2508,7 @@ export default function FitnessProgramEditorForm({
                                   <Input
                                     type="number"
                                     min={1}
+                                    max={MAX_EXERCISE_SETS}
                                     placeholder="4"
                                     value={
                                       ex.target_sets === "" || ex.target_sets == null
@@ -2515,21 +2521,23 @@ export default function FitnessProgramEditorForm({
                                         letter,
                                         i,
                                         "target_sets",
-                                        v === "" ? "" : Math.max(1, Number(v) || 1)
+                                        v === "" ? "" : clampExerciseSets(v)
                                       );
                                     }}
                                     className="h-10 w-full min-w-[3.25rem] border-[#C8D7E9] bg-white rounded-lg text-sm"
                                   />
+                                  <p className="mt-0.5 text-[10px] text-[#94a3b8]">Max {MAX_EXERCISE_SETS}</p>
                                 </TableCell>
                                 <TableCell className="p-2 align-middle">
                                   <Input
                                     value={ex.target_reps_range ?? ""}
+                                    maxLength={MAX_REP_RANGE_LEN}
                                     onChange={(e) =>
                                       updateWorkoutExercise(
                                         letter,
                                         i,
                                         "target_reps_range",
-                                        e.target.value
+                                        clampRepRangeInput(e.target.value)
                                       )
                                     }
                                     placeholder="8–12"
@@ -2812,17 +2820,23 @@ export default function FitnessProgramEditorForm({
                                       <textarea
                                         rows={3}
                                         value={ex.instructionsText ?? ""}
+                                        maxLength={MAX_INSTRUCTIONS_LEN}
+                                        autoComplete="off"
+                                        name={`exercise-instructions-${letter}-${i}`}
                                         onChange={(e) =>
                                           updateWorkoutExercise(
                                             letter,
                                             i,
                                             "instructionsText",
-                                            e.target.value
+                                            clampInstructionsText(e.target.value)
                                           )
                                         }
                                         placeholder={"One step per line, e.g.\nLie on bench\nGrip bar\nPress up"}
-                                        className="w-full rounded-lg border border-[#C8D7E9] bg-white px-3 py-2 text-sm text-[#0A3161] outline-none focus:ring-2 focus:ring-[#0A3161]/25 min-h-[4.5rem]"
+                                        className="w-full max-w-full break-words overflow-auto rounded-lg border border-[#C8D7E9] bg-white px-3 py-2 text-sm text-[#0A3161] outline-none focus:ring-2 focus:ring-[#0A3161]/25 min-h-[4.5rem] max-h-40"
                                       />
+                                      <p className="mt-0.5 text-[10px] text-[#94a3b8]">
+                                        One line per step · not added to Tag dropdown
+                                      </p>
                                     </div>
                                   </div>
                                 </TableCell>

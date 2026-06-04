@@ -315,10 +315,66 @@ function workoutExerciseRowIsEmpty(ex) {
   return !name && !hasSets && !reps && !muscles && !inst;
 }
 
+export const MAX_EXERCISE_NAME_LEN = 120;
+export const MAX_EXERCISE_SETS = 99;
+export const MAX_REP_RANGE_LEN = 32;
+export const MAX_REP_VALUE = 999;
+export const MAX_EXERCISE_CALORIES = 9999;
+export const MAX_EXERCISE_TIME_MINUTES = 60;
+export const MAX_INSTRUCTIONS_LEN = 4000;
+export const EXERCISE_TAG_OPTIONS = ["Large Muscle", "Primary Strength", "Accessory", "Core"];
+
+export function clampExerciseName(value) {
+  return String(value ?? "").slice(0, MAX_EXERCISE_NAME_LEN);
+}
+
+export function clampExerciseSets(value) {
+  if (value === "" || value == null) return "";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  return Math.min(MAX_EXERCISE_SETS, Math.max(1, Math.floor(n)));
+}
+
+export function clampRepRangeInput(value) {
+  return String(value ?? "").slice(0, MAX_REP_RANGE_LEN);
+}
+
+export function clampExerciseTimeMinutes(value) {
+  if (value === "" || value == null) return "";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  return Math.min(MAX_EXERCISE_TIME_MINUTES, Math.max(0, Math.floor(n)));
+}
+
+export function clampExerciseCalories(value) {
+  if (value === "" || value == null) return "";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  return Math.min(MAX_EXERCISE_CALORIES, Math.max(0, Math.floor(n)));
+}
+
+export function clampInstructionsText(value) {
+  return String(value ?? "").slice(0, MAX_INSTRUCTIONS_LEN);
+}
+
+export function normalizeExerciseTag(tag, targetMuscles) {
+  const fromUi = String(tag ?? "").trim();
+  if (EXERCISE_TAG_OPTIONS.includes(fromUi)) return fromUi;
+  const fromMuscle =
+    Array.isArray(targetMuscles) && targetMuscles.length
+      ? String(targetMuscles[0]).trim()
+      : "";
+  if (fromMuscle && EXERCISE_TAG_OPTIONS.includes(fromMuscle)) return fromMuscle;
+  return "Large Muscle";
+}
+
 /** Validate rep range text — rejects empty, 0, 0-0, and invalid ranges. Returns error or null. */
 export function validateRepRange(value) {
   const raw = String(value ?? "").trim();
   if (!raw) return "Rep range is required.";
+  if (raw.length > MAX_REP_RANGE_LEN) {
+    return `Rep range is too long (max ${MAX_REP_RANGE_LEN} characters).`;
+  }
 
   const compact = raw.replace(/\s+/g, "");
   if (/^0[-–—]0$/i.test(compact)) {
@@ -330,6 +386,7 @@ export function validateRepRange(value) {
   if (/^\d+$/.test(normalized)) {
     const n = Number(normalized);
     if (!Number.isFinite(n) || n < 1) return "Rep range must be at least 1.";
+    if (n > MAX_REP_VALUE) return `Rep range cannot exceed ${MAX_REP_VALUE}.`;
     return null;
   }
 
@@ -341,6 +398,9 @@ export function validateRepRange(value) {
       return "Rep range cannot be 0–0. Enter a valid range (e.g. 8–12).";
     }
     if (low < 1 || high < 1) return "Rep range values must be at least 1.";
+    if (low > MAX_REP_VALUE || high > MAX_REP_VALUE) {
+      return `Rep range values cannot exceed ${MAX_REP_VALUE}.`;
+    }
     if (low > high) return "Rep range min cannot be greater than max (e.g. 8–12).";
     return null;
   }
@@ -353,9 +413,16 @@ function validateWorkoutExerciseRow(ex, letter, index) {
   const name = String(ex?.name ?? "").trim();
   if (!name) return `${slot}: Exercise name is required.`;
 
+  if (name.length > MAX_EXERCISE_NAME_LEN) {
+    return `${slot}: Exercise name is too long (max ${MAX_EXERCISE_NAME_LEN} characters).`;
+  }
+
   const ts = ex?.target_sets;
   if (ts === "" || ts == null || Number.isNaN(Number(ts)) || Number(ts) < 1) {
     return `${slot} (“${name}”): Sets is required (≥ 1).`;
+  }
+  if (Number(ts) > MAX_EXERCISE_SETS) {
+    return `${slot} (“${name}”): Sets cannot exceed ${MAX_EXERCISE_SETS}.`;
   }
 
   const repErr = validateRepRange(ex?.target_reps_range);
@@ -368,6 +435,19 @@ function validateWorkoutExerciseRow(ex, letter, index) {
   const inst = String(ex?.instructionsText ?? "").trim();
   if (!inst || !inst.split(/\r?\n/).some((line) => line.trim())) {
     return `${slot} (“${name}”): Add at least one instruction line.`;
+  }
+  if (inst.length > MAX_INSTRUCTIONS_LEN) {
+    return `${slot} (“${name}”): Instructions are too long (max ${MAX_INSTRUCTIONS_LEN} characters).`;
+  }
+
+  const cal = ex?.estimated_calories;
+  if (cal !== "" && cal != null && !Number.isNaN(Number(cal)) && Number(cal) > MAX_EXERCISE_CALORIES) {
+    return `${slot} (“${name}”): Calories cannot exceed ${MAX_EXERCISE_CALORIES}.`;
+  }
+
+  const mins = ex?.time_minutes;
+  if (mins !== "" && mins != null && !Number.isNaN(Number(mins)) && Number(mins) > MAX_EXERCISE_TIME_MINUTES) {
+    return `${slot} (“${name}”): Time cannot exceed ${MAX_EXERCISE_TIME_MINUTES} minutes.`;
   }
 
   return null;
@@ -892,7 +972,7 @@ export function apiExerciseRowToUi(ex) {
     const s = ex.trim();
     return { ...emptyRow, name: s };
   }
-  const name = String(ex.name ?? "").trim();
+  const name = clampExerciseName(String(ex.name ?? "").trim());
   const video = String(ex.video_url ?? ex.videoUrl ?? "").trim();
   let thumb = String(ex.thumbnail_url ?? ex.thumbnailUrl ?? "").trim();
   if (thumb && (thumb === video || isVideoMediaUrlString(thumb))) thumb = "";
@@ -907,12 +987,7 @@ export function apiExerciseRowToUi(ex) {
       else if (!isImageMediaUrlString(s) && !urls.includes(s)) urls.push(s);
     }
   }
-  const tagFromMuscles =
-    Array.isArray(ex.target_muscles) && ex.target_muscles.length
-      ? String(ex.target_muscles[0])
-      : "";
-  const tagFromUi = String(ex.tag ?? "").trim();
-  const tag = tagFromUi || tagFromMuscles || "Large Muscle";
+  const tag = normalizeExerciseTag(ex.tag, ex.target_muscles);
 
   /** @type {Record<string, unknown>} */
   const row = {
@@ -940,11 +1015,11 @@ export function apiExerciseRowToUi(ex) {
   }
 
   if (typeof ex.instructionsText === "string") {
-    row.instructionsText = ex.instructionsText;
+    row.instructionsText = clampInstructionsText(ex.instructionsText);
   } else if (Array.isArray(ex.instructions)) {
-    row.instructionsText = ex.instructions.map(String).join("\n");
+    row.instructionsText = clampInstructionsText(ex.instructions.map(String).join("\n"));
   } else if (typeof ex.instructions === "string") {
-    row.instructionsText = ex.instructions.replace(/\\n/g, "\n");
+    row.instructionsText = clampInstructionsText(ex.instructions.replace(/\\n/g, "\n"));
   } else {
     row.instructionsText = "";
   }
@@ -1090,7 +1165,7 @@ function buildWeekGridPayload(page2, schedule) {
 }
 
 function uiExerciseToLibraryObject(ex, letter, idx, fallbackDifficulty) {
-  const nameRaw = String(ex?.name ?? "").trim();
+  const nameRaw = clampExerciseName(String(ex?.name ?? "").trim());
   const thumbExplicit = String(ex?.thumbnail_url ?? ex?.thumbnailUrl ?? "").trim();
   const videoExplicit = String(ex?.video_url ?? ex?.videoUrl ?? "").trim();
   const urls = Array.isArray(ex?.mediaUrls)
@@ -1135,19 +1210,21 @@ function uiExerciseToLibraryObject(ex, letter, idx, fallbackDifficulty) {
     muscles = ex.target_muscles.map(String).filter(Boolean);
   }
 
-  const tagMuscle = String(ex?.tag ?? "").trim();
+  o.tag = normalizeExerciseTag(ex?.tag, muscles.length ? muscles : ex?.target_muscles);
   if (muscles.length) {
     o.target_muscles = muscles;
-  } else if (tagMuscle && !["Large Muscle", "Primary Strength", "Accessory", "Core"].includes(tagMuscle)) {
-    o.target_muscles = [tagMuscle];
+  } else if (EXERCISE_TAG_OPTIONS.includes(o.tag)) {
+    o.target_muscles = [o.tag];
   }
 
   if (ex.target_sets != null && ex.target_sets !== "" && !Number.isNaN(Number(ex.target_sets))) {
-    o.target_sets = Number(ex.target_sets);
+    o.target_sets = clampExerciseSets(ex.target_sets);
   }
-  if (ex.target_reps_range) o.target_reps_range = String(ex.target_reps_range);
+  if (ex.target_reps_range) {
+    o.target_reps_range = clampRepRangeInput(ex.target_reps_range);
+  }
 
-  const instText = String(ex.instructionsText ?? "").trim();
+  const instText = clampInstructionsText(String(ex.instructionsText ?? "").trim());
   if (instText) {
     o.instructions = instText
       .split(/\r?\n/)
@@ -1159,8 +1236,8 @@ function uiExerciseToLibraryObject(ex, letter, idx, fallbackDifficulty) {
 
   const timeRaw = ex.time_minutes ?? ex.estimated_time;
   if (timeRaw !== "" && timeRaw != null && !Number.isNaN(Number(timeRaw))) {
-    const mins = Number(timeRaw);
-    if (mins >= 0) {
+    const mins = clampExerciseTimeMinutes(timeRaw);
+    if (mins !== "" && mins >= 0) {
       o.time_minutes = mins;
       o.estimated_time = mins;
     }
@@ -1168,8 +1245,8 @@ function uiExerciseToLibraryObject(ex, letter, idx, fallbackDifficulty) {
 
   const calRaw = ex.estimated_calories;
   if (calRaw !== "" && calRaw != null && !Number.isNaN(Number(calRaw))) {
-    const cal = Number(calRaw);
-    if (cal >= 0) o.estimated_calories = cal;
+    const cal = clampExerciseCalories(calRaw);
+    if (cal !== "" && cal >= 0) o.estimated_calories = cal;
   }
 
   const mediaOnly = [...new Set([video_url, ...urls].filter(Boolean))];
