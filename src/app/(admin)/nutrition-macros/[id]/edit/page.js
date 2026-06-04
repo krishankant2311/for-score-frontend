@@ -170,10 +170,15 @@ export default function EditNutritionPage() {
       formData.append("status", status || "Active");
       if (imageFile) formData.append("image", imageFile);
 
-      const res = await axios.put(
+      const res = await axios.post(
         `${baseUrl}/api/admin/update-nutrition-items/${itemId}`,
         formData,
-        { headers: { token } }
+        {
+          headers: {
+            token,
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
       if (res?.data?.success) {
@@ -183,7 +188,7 @@ export default function EditNutritionPage() {
         } catch {
           // ignore
         }
-        router.push("/nutrition-macros");
+        router.push("/foods");
       } else {
         toast.error(res?.data?.message || "Failed to update nutrition item");
       }

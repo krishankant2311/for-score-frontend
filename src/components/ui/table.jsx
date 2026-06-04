@@ -6,14 +6,22 @@ import { cn } from "@/lib/utils"
 
 function Table({
   className,
+  unwrap = false,
+  containerClassName,
   ...props
 }) {
+  const table = (
+    <table
+      data-slot="table"
+      className={cn("w-full caption-bottom text-sm", className)}
+      {...props} />
+  );
+  if (unwrap) return table;
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props} />
+    <div
+      data-slot="table-container"
+      className={cn("relative w-full overflow-x-auto", containerClassName)}>
+      {table}
     </div>
   );
 }
@@ -77,7 +85,7 @@ function TableHead({
     <th
       data-slot="table-head"
       className={cn(
-        "text-foreground h-10 px-12 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "text-foreground h-10 px-4 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className
       )}
       {...props} />
@@ -92,7 +100,7 @@ function TableCell({
     <td
       data-slot="table-cell"
       className={cn(
-        "px-12 py-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "px-4 py-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className
       )}
       {...props} />

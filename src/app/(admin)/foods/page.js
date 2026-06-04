@@ -203,16 +203,18 @@ export default function FoodsPage() {
             ) : (
               paginated.map((f) => (
                 <TableRow key={f.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
+                  <TableCell className="max-w-[280px] font-medium align-top whitespace-normal">
+                    <div className="flex items-start gap-2">
                       {f.image ? (
-                        <img src={f.image} alt="" className="h-9 w-9 rounded-lg object-cover" />
+                        <img src={f.image} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" />
                       ) : (
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0A3161]/10 text-[#0A3161]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#0A3161]/10 text-[#0A3161]">
                           <LuApple className="h-4 w-4" />
                         </span>
                       )}
-                      {f.name}
+                      <span className="min-w-0 break-words leading-snug" title={f.name}>
+                        {f.name}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>

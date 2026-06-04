@@ -26,7 +26,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { validateScheduleTab, validateWorkoutsTab } from "@/lib/fitnessProgramApi";
+import {
+  validateScheduleTab,
+  validateWorkoutsTab,
+  validateWorkoutBlockBeforeAddExercise,
+  validateRecoveryBlockBeforeAddStretch,
+} from "@/lib/fitnessProgramApi";
 import { FormSection, lbl, choiceChip } from "./FormSection";
 import { ensureProgramLogicDefaults, createEmptyWorkoutMeta } from "../data";
 
@@ -199,6 +204,23 @@ function tabIndex(id) {
 
 const LEVEL_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
 const TAG_OPTIONS = ["Large Muscle", "Primary Strength", "Accessory", "Core"];
+
+const MAX_EXERCISE_TIME_MINUTES = 60;
+const MAX_EXERCISE_CALORIES = 9999;
+
+function clampExerciseTimeMinutes(value) {
+  if (value === "" || value == null) return "";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  return Math.min(MAX_EXERCISE_TIME_MINUTES, Math.max(0, Math.floor(n)));
+}
+
+function clampExerciseCalories(value) {
+  if (value === "" || value == null) return "";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  return Math.min(MAX_EXERCISE_CALORIES, Math.max(0, Math.floor(n)));
+}
 
 function createEmptyWorkoutExercise() {
   return {
@@ -473,10 +495,16 @@ export default function FitnessProgramEditorForm({
   };
 
   const addWorkoutExercise = (letter) => {
+    const list = draft?.workouts?.[letter] ?? [];
+    const err = validateWorkoutBlockBeforeAddExercise(list, letter);
+    if (err) {
+      toast.error(err, { id: "fitness-program-add-exercise" });
+      return;
+    }
     setDraft((d) => {
       if (!d) return d;
-      const list = [...(d.workouts?.[letter] ?? []), createEmptyWorkoutExercise()];
-      return { ...d, workouts: { ...d.workouts, [letter]: list } };
+      const rows = [...(d.workouts?.[letter] ?? []), createEmptyWorkoutExercise()];
+      return { ...d, workouts: { ...d.workouts, [letter]: rows } };
     });
   };
 
@@ -524,6 +552,12 @@ export default function FitnessProgramEditorForm({
   };
 
   const addStretch = () => {
+    const stretches = draft?.recovery?.stretches ?? [];
+    const err = validateRecoveryBlockBeforeAddStretch(stretches);
+    if (err) {
+      toast.error(err, { id: "fitness-program-add-stretch" });
+      return;
+    }
     setDraft((d) => {
       if (!d) return d;
       return {
@@ -1226,7 +1260,7 @@ export default function FitnessProgramEditorForm({
   if (!draft) return null;
 
   return (
-    <div className="w-full min-w-0">
+    <div className="w-full min-w-0" autoComplete="off">
       {wizardMode && (
         <div className="mt-6 w-full min-w-0 overflow-hidden rounded-2xl border border-[#C8D7E9] bg-white shadow-sm">
           <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4 border-b border-[#E8EEF4] bg-[#FAFCFF]/80">
@@ -1341,6 +1375,10 @@ export default function FitnessProgramEditorForm({
                   </label>
                   <textarea
                     rows={6}
+                    name="program-overview-body"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck
                     value={draft.overview}
                     onChange={(e) => setDraft({ ...draft, overview: e.target.value })}
                     className={`mt-1.5 ${ta} min-h-[140px]`}
@@ -1942,7 +1980,7 @@ export default function FitnessProgramEditorForm({
           )}
 
           {activeTab === "schedule" && (
-            <div className="">
+            <div className="flex flex-col gap-8 rounded-2xl bg-[#EEF2F7] p-4 sm:p-5 md:p-6 [&>section]:shadow-sm">
               {/* <p className="text-sm text-[#5671A6] mb-1 w-full max-w-none leading-relaxed">
                 <span className="font-medium text-[#2158A3]">
                   Part 1: The {Number(draft.durationWeeks) || 4}-week logic grid
@@ -1955,6 +1993,7 @@ export default function FitnessProgramEditorForm({
 
               {/* Phase / block structure */}
               <FormSection
+                className="shrink-0"
                 title="Phase / block structure"
                 hint="Split the program into 1–3 phases (e.g. Foundation → Intensification → Reveal). Phase data is also surfaced on the program card."
                 icon={<HiOutlineSparkles />}
@@ -2080,6 +2119,7 @@ export default function FitnessProgramEditorForm({
 
               {/* Frequency & rest rules */}
               <FormSection
+                className="shrink-0"
                 title="Frequency & rest rules"
                 hint="Drive the app schedule generator and matching engine — separate from the 4-week logic grid."
                 icon={<HiOutlineCalendar />}
@@ -2148,10 +2188,16 @@ export default function FitnessProgramEditorForm({
               </FormSection>
 
               <FormSection
-                title={`The ${Number(draft.durationWeeks) || 4}-Week Logic Grid${
-                  Number(draft.phaseCount) > 1 ? ` · ${draft.phaseCount} phases` : ""
-                }`}
-                hint="Each row is a week. Phase badge on the left shows which phase the week belongs to."
+                className="shrink-0"
+                title={
+                  <>
+                    {`The ${Number(draft.durationWeeks) || 4}-Week Logic Grid${
+                      Number(draft.phaseCount) > 1 ? ` · ${draft.phaseCount} phases` : ""
+                    }`}{" "}
+                    <ReqMark />
+                  </>
+                }
+                hint="Each row is a week. Phase badge on the left shows which phase the week belongs to. Fill at least one day cell before continuing."
                 icon={<HiOutlineCalendar />}
                 tone="slate"
               >
@@ -2619,6 +2665,7 @@ export default function FitnessProgramEditorForm({
                                       <Input
                                         type="number"
                                         min={0}
+                                        max={MAX_EXERCISE_TIME_MINUTES}
                                         step={1}
                                         value={
                                           ex.time_minutes === "" || ex.time_minutes == null
@@ -2631,13 +2678,15 @@ export default function FitnessProgramEditorForm({
                                             letter,
                                             i,
                                             "time_minutes",
-                                            v === "" ? "" : Math.max(0, Number(v) || 0)
+                                            clampExerciseTimeMinutes(v)
                                           );
                                         }}
                                         placeholder="e.g. 5"
                                         className="h-10 border-[#C8D7E9] bg-white rounded-lg text-sm"
                                       />
-                                      <p className="mt-1 text-[10px] text-[#94a3b8]">Member app · per exercise</p>
+                                      <p className="mt-1 text-[10px] text-[#94a3b8]">
+                                        Member app · max {MAX_EXERCISE_TIME_MINUTES} min
+                                      </p>
                                     </div>
                                     <div>
                                       <label className="block text-xs font-medium text-[#5671A6] mb-1">
@@ -2646,6 +2695,7 @@ export default function FitnessProgramEditorForm({
                                       <Input
                                         type="number"
                                         min={0}
+                                        max={MAX_EXERCISE_CALORIES}
                                         step={1}
                                         value={
                                           ex.estimated_calories === "" || ex.estimated_calories == null
@@ -2658,13 +2708,15 @@ export default function FitnessProgramEditorForm({
                                             letter,
                                             i,
                                             "estimated_calories",
-                                            v === "" ? "" : Math.max(0, Number(v) || 0)
+                                            clampExerciseCalories(v)
                                           );
                                         }}
                                         placeholder="e.g. 45"
                                         className="h-10 border-[#C8D7E9] bg-white rounded-lg text-sm"
                                       />
-                                      <p className="mt-1 text-[10px] text-[#94a3b8]">Member app · optional estimate</p>
+                                      <p className="mt-1 text-[10px] text-[#94a3b8]">
+                                        Member app · max {MAX_EXERCISE_CALORIES.toLocaleString()} kcal
+                                      </p>
                                     </div>
                                   </div>
 
@@ -3606,7 +3658,7 @@ export default function FitnessProgramEditorForm({
           <Button
             type="button"
             variant="outline"
-            className="w-full border-[#C8D7E9] bg-white sm:w-auto"
+            className="h-11 min-h-11 w-full min-w-[140px] border-[#C8D7E9] bg-white px-5 sm:w-auto"
             onClick={onCancel}
             disabled={isSaving}
           >
@@ -3636,7 +3688,7 @@ export default function FitnessProgramEditorForm({
           {(!wizardMode || currentIdx === TAB_IDS.length - 1) && (
             <Button
               type="button"
-              className="w-full min-h-11 bg-[#0A3161] hover:bg-[#0D3D7A] sm:w-auto sm:min-w-[140px]"
+              className="h-11 min-h-11 w-full min-w-[140px] bg-[#0A3161] px-5 hover:bg-[#0D3D7A] sm:w-auto"
               onClick={() => onSave()}
               disabled={isSaving}
             >

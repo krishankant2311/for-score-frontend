@@ -25,7 +25,9 @@ import {
   extractListMeta,
   deleteProgramById,
   isAdminApiErrorPayload,
+  rawProgramExcludedFromAdminList,
 } from "@/lib/fitnessProgramApi";
+import { joinAdminPath } from "@/lib/subscriptionPlanApi";
 import DeleteProgramModal from "./components/DeleteProgramModal";
 import AdminHeaderCard from "@/components/admin/AdminHeaderCard";
 
@@ -80,9 +82,12 @@ export default function FitnessProgramsPage() {
           limit: rowsPerPage,
         };
         const q = debouncedSearchTerm.trim();
-        if (q) params.search = q;
+        if (q) {
+          params.q = q;
+          params.search = q;
+        }
 
-        const res = await axios.get(`${baseUrl}/api/admin/get-all-programs`, {
+        const res = await axios.get(joinAdminPath(baseUrl, "get-all-programs"), {
           headers: {
             token,
             Authorization: `Bearer ${token}`,
@@ -101,7 +106,10 @@ export default function FitnessProgramsPage() {
         const rawList = extractProgramsFromListResponse(res?.data);
         const meta = extractListMeta(res?.data);
 
-        const mapped = rawList.map(mapProgramFromApi).filter(Boolean);
+        const mapped = rawList
+          .filter((raw) => !rawProgramExcludedFromAdminList(raw))
+          .map(mapProgramFromApi)
+          .filter(Boolean);
 
         if (meta.total !== undefined) setServerTotal(meta.total);
         else setServerTotal(mapped.length);
@@ -163,9 +171,11 @@ export default function FitnessProgramsPage() {
         /* ignore */
       }
       toast.success("Program deleted.");
+      const deletedId = String(p.id);
+      setPrograms((prev) => prev.filter((row) => String(row.id) !== deletedId));
+      setServerTotal((t) => Math.max(0, (t || 0) - 1));
       setDeleteTarget(null);
       setRefreshKey((k) => k + 1);
-      setCurrentPage(1);
     } catch (err) {
       console.error("Delete program failed:", err?.response?.data || err?.message);
       const msg =
@@ -221,8 +231,8 @@ export default function FitnessProgramsPage() {
         />
       </div>
 
-      <div className="surface-card mt-6 max-h-[520px] w-full overflow-x-auto overflow-y-auto">
-        <Table className="min-w-[1000px]">
+      <div className="surface-card mt-6 max-h-[520px] w-full overflow-auto">
+        <Table unwrap className="min-w-[1000px] w-full table-fixed">
           <TableHeader className="sticky top-0 z-10 bg-muted/90 backdrop-blur-sm">
             <TableRow className="border-b border-border/80 bg-muted/90">
               <TableHead className="px-4 py-3 font-semibold text-primary/85">PROGRAM</TableHead>
@@ -252,7 +262,10 @@ export default function FitnessProgramsPage() {
                       {p.title}
                     </p>
                     {p.subHeader && (
-                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground" title={p.subHeader}>
+                      <p
+                        className="mt-1 text-xs text-muted-foreground whitespace-normal break-words leading-snug"
+                        title={p.subHeader}
+                      >
                         {p.subHeader}
                       </p>
                     )}

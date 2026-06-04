@@ -298,8 +298,92 @@ function isProbablyEmptyWorkouts(workouts) {
   return letters.every((l) => {
     const list = workouts?.[l];
     if (!Array.isArray(list) || list.length === 0) return true;
-    return list.every((ex) => !String(ex?.name ?? "").trim());
+    return list.every((ex) => workoutExerciseRowIsEmpty(ex));
   });
+}
+
+const WORKOUT_LETTER_LABEL = { A: "Workout A", B: "Workout B", C: "Workout C" };
+
+function workoutExerciseRowIsEmpty(ex) {
+  if (!ex || typeof ex !== "object") return true;
+  const name = String(ex?.name ?? "").trim();
+  const sets = ex?.target_sets;
+  const hasSets = sets !== "" && sets != null && !Number.isNaN(Number(sets));
+  const reps = String(ex?.target_reps_range ?? "").trim();
+  const muscles = String(ex?.targetMusclesText ?? "").trim();
+  const inst = String(ex?.instructionsText ?? "").trim();
+  return !name && !hasSets && !reps && !muscles && !inst;
+}
+
+/** Validate rep range text — rejects empty, 0, 0-0, and invalid ranges. Returns error or null. */
+export function validateRepRange(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "Rep range is required.";
+
+  const compact = raw.replace(/\s+/g, "");
+  if (/^0[-–—]0$/i.test(compact)) {
+    return "Rep range cannot be 0–0. Enter a valid range (e.g. 8–12).";
+  }
+
+  const normalized = raw.replace(/[–—]/g, "-").replace(/\s+/g, "");
+
+  if (/^\d+$/.test(normalized)) {
+    const n = Number(normalized);
+    if (!Number.isFinite(n) || n < 1) return "Rep range must be at least 1.";
+    return null;
+  }
+
+  const rangeMatch = normalized.match(/^(\d+)-(\d+)$/);
+  if (rangeMatch) {
+    const low = Number(rangeMatch[1]);
+    const high = Number(rangeMatch[2]);
+    if (low === 0 && high === 0) {
+      return "Rep range cannot be 0–0. Enter a valid range (e.g. 8–12).";
+    }
+    if (low < 1 || high < 1) return "Rep range values must be at least 1.";
+    if (low > high) return "Rep range min cannot be greater than max (e.g. 8–12).";
+    return null;
+  }
+
+  return "Enter a valid rep range (e.g. 8–12 or 10).";
+}
+
+function validateWorkoutExerciseRow(ex, letter, index) {
+  const slot = `${WORKOUT_LETTER_LABEL[letter] ?? `Workout ${letter}`} row ${index + 1}`;
+  const name = String(ex?.name ?? "").trim();
+  if (!name) return `${slot}: Exercise name is required.`;
+
+  const ts = ex?.target_sets;
+  if (ts === "" || ts == null || Number.isNaN(Number(ts)) || Number(ts) < 1) {
+    return `${slot} (“${name}”): Sets is required (≥ 1).`;
+  }
+
+  const repErr = validateRepRange(ex?.target_reps_range);
+  if (repErr) return `${slot} (“${name}”): ${repErr}`;
+
+  if (!String(ex?.targetMusclesText ?? "").trim()) {
+    return `${slot} (“${name}”): Target muscles is required.`;
+  }
+
+  const inst = String(ex?.instructionsText ?? "").trim();
+  if (!inst || !inst.split(/\r?\n/).some((line) => line.trim())) {
+    return `${slot} (“${name}”): Add at least one instruction line.`;
+  }
+
+  return null;
+}
+
+/** Block “+ Add exercise” until the current last row is fully filled. */
+export function validateWorkoutBlockBeforeAddExercise(list, letter = "A") {
+  const label = WORKOUT_LETTER_LABEL[letter] ?? `Workout ${letter}`;
+  if (!Array.isArray(list) || list.length === 0) return null;
+
+  const last = list[list.length - 1];
+  if (workoutExerciseRowIsEmpty(last)) {
+    return `${label}: fill in the current exercise before adding another.`;
+  }
+
+  return validateWorkoutExerciseRow(last, letter, list.length - 1);
 }
 
 function isProbablyEmptyRecovery(recovery) {
@@ -330,35 +414,64 @@ function validateOverviewForSave(draft) {
   return null;
 }
 
-/** Per named exercise: sets, rep range, target muscles, instructions (≥1 line). */
+/** Per workout block: every non-empty row must be complete; A/B/C each need ≥1 exercise. */
 export function validateWorkoutsCompleteForSave(workouts) {
-  if (isProbablyEmptyWorkouts(workouts)) {
-    return "Part 2 · Library: add at least one named exercise across Workouts A/B/C.";
-  }
   const letters = ["A", "B", "C"];
+
   for (const L of letters) {
     const list = Array.isArray(workouts?.[L]) ? workouts[L] : [];
+    const label = WORKOUT_LETTER_LABEL[L];
+
+    if (list.length === 0) {
+      return `${label}: add at least one exercise.`;
+    }
+
+    let completeCount = 0;
+
     for (let i = 0; i < list.length; i++) {
       const ex = list[i];
-      const name = String(ex?.name ?? "").trim();
-      if (!name) continue;
-      const ts = ex?.target_sets;
-      if (ts === "" || ts == null || Number.isNaN(Number(ts)) || Number(ts) < 1) {
-        return `Workout ${L}${i + 1} (“${name}”): Sets is required (≥ 1).`;
+      if (workoutExerciseRowIsEmpty(ex)) {
+        if (list.length > 1) {
+          return `${label} row ${i + 1}: remove empty rows or complete this exercise.`;
+        }
+        continue;
       }
-      if (!String(ex?.target_reps_range ?? "").trim()) {
-        return `Workout ${L}${i + 1} (“${name}”): Rep range is required.`;
-      }
-      if (!String(ex?.targetMusclesText ?? "").trim()) {
-        return `Workout ${L}${i + 1} (“${name}”): Target muscles is required.`;
-      }
-      const inst = String(ex?.instructionsText ?? "").trim();
-      if (!inst || !inst.split(/\r?\n/).some((line) => line.trim())) {
-        return `Workout ${L}${i + 1} (“${name}”): Add at least one instruction line.`;
-      }
+
+      const err = validateWorkoutExerciseRow(ex, L, i);
+      if (err) return err;
+      completeCount++;
+    }
+
+    if (completeCount === 0) {
+      return `${label}: add at least one complete exercise (name, sets, rep range, muscles, instructions).`;
     }
   }
+
   return null;
+}
+
+function stretchRowIsEmpty(s) {
+  if (!s || typeof s !== "object") return true;
+  return !String(s?.name ?? "").trim() && !String(s?.detail ?? "").trim();
+}
+
+function validateStretchRow(s, index) {
+  const slot = `Stretch ${index + 1}`;
+  const name = String(s?.name ?? "").trim();
+  const detail = String(s?.detail ?? "").trim();
+  if (!name) return `${slot}: Stretch name is required.`;
+  if (!detail) return `${slot} (“${name}”): Detail / duration is required.`;
+  return null;
+}
+
+/** Block “+ Add stretch” until the current last row is fully filled. */
+export function validateRecoveryBlockBeforeAddStretch(stretches) {
+  if (!Array.isArray(stretches) || stretches.length === 0) return null;
+  const last = stretches[stretches.length - 1];
+  if (stretchRowIsEmpty(last)) {
+    return "Big 4 stretches: fill in the current stretch before adding another.";
+  }
+  return validateStretchRow(last, stretches.length - 1);
 }
 
 /** Stricter than isProbablyEmptyRecovery — coach prompt, options, stretch name + detail. */
@@ -376,10 +489,25 @@ export function validateRecoveryForSave(recovery) {
     return "Part 3 · Recovery: Activity options is required.";
   }
   const stretches = Array.isArray(r.stretches) ? r.stretches : [];
-  const okStretch = stretches.some(
-    (s) => String(s?.name ?? "").trim() && String(s?.detail ?? "").trim()
-  );
-  if (!okStretch) {
+  if (stretches.length === 0) {
+    return "Part 3 · Recovery: add at least one stretch with both name and detail.";
+  }
+
+  let completeCount = 0;
+  for (let i = 0; i < stretches.length; i++) {
+    const s = stretches[i];
+    if (stretchRowIsEmpty(s)) {
+      if (stretches.length > 1) {
+        return `Big 4 stretches row ${i + 1}: remove empty rows or complete this stretch.`;
+      }
+      continue;
+    }
+    const err = validateStretchRow(s, i);
+    if (err) return `Part 3 · Recovery: ${err}`;
+    completeCount++;
+  }
+
+  if (completeCount === 0) {
     return "Part 3 · Recovery: add at least one stretch with both name and detail.";
   }
   return null;
@@ -1868,10 +1996,32 @@ export async function deleteProgramById(programId, { token, baseUrl }) {
   const headersFull = { token, Authorization: `Bearer ${token}` };
   const headersToken = { token };
 
+  const adminDeleteUrl = (pathAfterAdmin) => {
+    const b = baseRaw;
+    const r = String(pathAfterAdmin).replace(/^\//, "");
+    if (b.toLowerCase().endsWith("/api")) return `${b}/admin/${r}`;
+    return `${b}/api/admin/${r}`;
+  };
+
   /** Matches curl: `POST …/delete-program/<id> -H "token: …"` (no body). */
   /** @returns {Array<() => Promise<unknown>>} */
   function tokenOnlyDeleteStrategies() {
     const list = [];
+    for (const suffix of [`delete-program/${rawId}`, `delete-programs/${rawId}`]) {
+      const url = adminDeleteUrl(suffix);
+      list.push(() =>
+        axios.post(url, undefined, {
+          headers: { token },
+          timeout: 30000,
+        })
+      );
+      list.push(() =>
+        axios.post(url, undefined, {
+          headers: headersFull,
+          timeout: 30000,
+        })
+      );
+    }
     for (const root of roots) {
       for (const suffix of [`/api/admin/delete-program/${id}`, `/api/admin/delete-programs/${id}`]) {
         const url = `${root}${suffix}`;

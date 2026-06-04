@@ -158,7 +158,7 @@ function WorkoutLetterBlock({ letter, label, exercises }) {
         <p className="text-sm font-semibold text-foreground">{label}</p>
         <p className="text-xs text-muted-foreground mt-0.5">Exercises linked to this block in the app library.</p>
       </div>
-      <div className="flex-1 min-h-0 space-y-3 p-4 md:p-5">
+      <div className="flex-1 min-h-0 space-y-2.5 p-4 md:p-5">
         {filled.length === 0 ? (
           <p className="text-sm text-muted-foreground italic">No exercises in this block.</p>
         ) : (
@@ -494,9 +494,9 @@ export default function ViewFitnessProgramPage() {
         )}
 
         {hasWorkouts && (
-          <section className="w-full min-w-0 space-y-4">
+          <section className="w-full min-w-0 space-y-3">
             <h2 className="text-base font-semibold text-foreground">Part 2 · Workout library</h2>
-            <div className="grid w-full min-w-0 gap-5 lg:gap-6 grid-cols-1 xl:grid-cols-3 xl:items-stretch 2xl:gap-8">
+            <div className="grid w-full min-w-0 grid-cols-1 gap-4 xl:grid-cols-3 xl:items-start xl:gap-5">
               <WorkoutLetterBlock
                 letter="A"
                 label="Workout A (e.g. lower / Monday)"

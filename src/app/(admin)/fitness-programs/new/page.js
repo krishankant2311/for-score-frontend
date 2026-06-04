@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { toast } from "react-hot-toast";
@@ -22,11 +22,16 @@ export default function NewFitnessProgramPage() {
   const router = useRouter();
   const [draft, setDraft] = useState(() => createEmptyProgramDetailForId("new"));
   const [isSaving, setIsSaving] = useState(false);
+  const saveLockRef = useRef(false);
 
   const handleSave = async () => {
+    if (saveLockRef.current || isSaving) return;
+    saveLockRef.current = true;
+
     const saveErr = validateFitnessProgramForSave(draft);
     if (saveErr) {
-      toast.error(saveErr);
+      toast.error(saveErr, { id: "fitness-program-save-validation" });
+      saveLockRef.current = false;
       return;
     }
 
@@ -34,22 +39,28 @@ export default function NewFitnessProgramPage() {
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
 
     if (!baseUrl) {
-      toast.error("API base URL is missing (NEXT_PUBLIC_API_BASE_URL).");
+      toast.error("API base URL is missing (NEXT_PUBLIC_API_BASE_URL).", {
+        id: "fitness-program-save-config",
+      });
+      saveLockRef.current = false;
       return;
     }
     if (!token) {
-      toast.error("Session expired. Please login again.");
+      toast.error("Session expired. Please login again.", { id: "fitness-program-save-auth" });
+      saveLockRef.current = false;
       return;
     }
 
     setIsSaving(true);
+    let saveSucceeded = false;
     try {
       const emailFromToken = decodeEmailFromJwt(token);
       const workoutsForSave = await prepareWorkoutsMediaUploads(draft.workouts);
       const workoutsMetaForSave = await prepareWorkoutMetaThumbnails(draft.workoutsMeta);
       if (workoutsHaveUnresolvedBlobMedia(workoutsForSave)) {
         toast.error(
-          "Workout media could not be read for upload. Remove the previews, re-upload the video, then save again."
+          "Workout media could not be read for upload. Remove the previews, re-upload the video, then save again.",
+          { id: "fitness-program-save-media" }
         );
         return;
       }
@@ -89,11 +100,12 @@ export default function NewFitnessProgramPage() {
         (typeof data.statusCode === "number" && data.statusCode >= 400);
 
       if (failed) {
-        toast.error(data.message || "Failed to save program");
+        toast.error(data.message || "Failed to save program", { id: "fitness-program-save-fail" });
         return;
       }
 
-      toast.success(data.message || "Program saved.");
+      saveSucceeded = true;
+      toast.success(data.message || "Program saved.", { id: "fitness-program-save-success" });
       router.push("/fitness-programs");
     } catch (err) {
       console.error("Add program failed:", err?.response?.data || err?.message);
@@ -103,9 +115,10 @@ export default function NewFitnessProgramPage() {
         (typeof err?.response?.data === "string" ? err.response.data : null) ||
         err?.message ||
         "Failed to save program";
-      toast.error(msg);
+      toast.error(msg, { id: "fitness-program-save-fail" });
     } finally {
       setIsSaving(false);
+      if (!saveSucceeded) saveLockRef.current = false;
     }
   };
 

@@ -973,7 +973,7 @@ export default function ContentManagement() {
               </div>
             </div>
           ) : (
-            <div className="border border-[#C8D7E9] rounded-lg overflow-hidden [&_.ck-editor__editable]:min-h-[360px] [&_.ck-editor__editable]:p-4 [&_.ck-toolbar]:border-t-0 [&_.ck-toolbar]:border-l-0 [&_.ck-toolbar]:border-r-0 [&_.ck-toolbar]:border-b [&_.ck-toolbar]:border-gray-200">
+            <div className="max-w-full overflow-hidden rounded-lg border border-[#C8D7E9] [&_.ck.ck-editor]:max-w-full [&_.ck-editor__main]:overflow-x-auto [&_.ck-editor__editable]:min-h-[360px] [&_.ck-editor__editable]:max-w-full [&_.ck-editor__editable]:p-4 [&_.ck-toolbar]:flex-wrap [&_.ck-toolbar]:border-t-0 [&_.ck-toolbar]:border-l-0 [&_.ck-toolbar]:border-r-0 [&_.ck-toolbar]:border-b [&_.ck-toolbar]:border-gray-200">
               {isLoading ? (
                 <CenteredLoader label="Loading content…" />
               ) : (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import axios from "axios";
 import { toast } from "react-hot-toast";
@@ -30,6 +30,7 @@ export default function EditFitnessProgramPage() {
   const [draft, setDraft] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const saveLockRef = useRef(false);
 
   useEffect(() => {
     if (!id) return;
@@ -89,9 +90,13 @@ export default function EditFitnessProgramPage() {
   const titleLine = useMemo(() => draft?.title || "Program", [draft]);
 
   const handleSave = async () => {
+    if (saveLockRef.current || isSaving) return;
+    saveLockRef.current = true;
+
     const saveErr = validateFitnessProgramForSave(draft);
     if (saveErr) {
-      toast.error(saveErr);
+      toast.error(saveErr, { id: "fitness-program-save-validation" });
+      saveLockRef.current = false;
       return;
     }
 
@@ -99,22 +104,28 @@ export default function EditFitnessProgramPage() {
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
 
     if (!baseUrl) {
-      toast.error("API base URL is missing (NEXT_PUBLIC_API_BASE_URL).");
+      toast.error("API base URL is missing (NEXT_PUBLIC_API_BASE_URL).", {
+        id: "fitness-program-save-config",
+      });
+      saveLockRef.current = false;
       return;
     }
     if (!token) {
-      toast.error("Session expired. Please login again.");
+      toast.error("Session expired. Please login again.", { id: "fitness-program-save-auth" });
+      saveLockRef.current = false;
       return;
     }
 
     setIsSaving(true);
+    let saveSucceeded = false;
     try {
       const emailFromToken = decodeEmailFromJwt(token);
       const workoutsForSave = await prepareWorkoutsMediaUploads(draft.workouts);
       const workoutsMetaForSave = await prepareWorkoutMetaThumbnails(draft.workoutsMeta);
       if (workoutsHaveUnresolvedBlobMedia(workoutsForSave)) {
         toast.error(
-          "Workout media could not be read for upload. Remove the previews, re-upload the video, then save again."
+          "Workout media could not be read for upload. Remove the previews, re-upload the video, then save again.",
+          { id: "fitness-program-save-media" }
         );
         return;
       }
@@ -154,7 +165,7 @@ export default function EditFitnessProgramPage() {
         (typeof data.statusCode === "number" && data.statusCode >= 400);
 
       if (failed) {
-        toast.error(data.message || "Failed to update program");
+        toast.error(data.message || "Failed to update program", { id: "fitness-program-save-fail" });
         return;
       }
 
@@ -164,7 +175,8 @@ export default function EditFitnessProgramPage() {
         /* ignore */
       }
 
-      toast.success(data.message || "Program updated.");
+      saveSucceeded = true;
+      toast.success(data.message || "Program updated.", { id: "fitness-program-save-success" });
       router.push("/fitness-programs");
     } catch (err) {
       console.error("Update program failed:", err?.response?.data || err?.message);
@@ -174,9 +186,10 @@ export default function EditFitnessProgramPage() {
         (typeof err?.response?.data === "string" ? err.response.data : null) ||
         err?.message ||
         "Failed to update program";
-      toast.error(msg);
+      toast.error(msg, { id: "fitness-program-save-fail" });
     } finally {
       setIsSaving(false);
+      if (!saveSucceeded) saveLockRef.current = false;
     }
   };
 

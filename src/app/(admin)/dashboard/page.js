@@ -404,6 +404,14 @@ export default function Dashboard() {
       ],
     });
 
+  const usersStatusActiveCount = useMemo(() => {
+    const labels = usersStatusData?.labels ?? [];
+    const data = usersStatusData?.datasets?.[0]?.data ?? [];
+    const idx = labels.findIndex((l) => String(l).trim().toLowerCase() === "active");
+    if (idx >= 0) return Number(data[idx]) || 0;
+    return null;
+  }, [usersStatusData]);
+
   const exerciseTypesData =
     apiData?.doughnuts?.exerciseTypes ??
     (apiData ? emptyDoughnutChart() : {
@@ -885,7 +893,7 @@ export default function Dashboard() {
             amount={apiData?.cards?.exercisesToday ?? 0}
             percentage={11}
             isIncrease={true}
-            para={`${timeframeLabelMap[timeframe]} programs` ?? "All time programs"}
+            para={`${timeframeLabelMap[timeframe]} Programs` ?? "All time Programs"}
             icon={LiaDumbbellSolid}
             iconBg="bg-rose-500/10"
             iconColor="text-rose-700"
@@ -918,7 +926,7 @@ export default function Dashboard() {
             data={exerciseTypesBarData}
             baseOptions={baseOptions}
             title="Programs"
-            subtitle={`${timeframeLabelMap[timeframe]} programs` ?? "All time programs"}
+            subtitle={`${timeframeLabelMap[timeframe]} Programs` ?? "All time Programs"}
             yMax={niceMax(getChartMax(exerciseTypesBarData), 5)}
             yStep={niceStep(niceMax(getChartMax(exerciseTypesBarData), 5))}
           />
@@ -940,14 +948,17 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-12">
-          {/* Doughnuts */}
-          <div className="lg:col-span-8 grid gap-6">
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid gap-5 lg:grid-cols-12 lg:items-stretch">
+          {/* Doughnuts + Top Programs */}
+          <div className="lg:col-span-8 flex min-h-0 flex-col gap-5">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               <StatusDoughnut
                 title="Users Status"
                 chartData={usersStatusData}
                 baseOptions={baseOptions}
+                centerValue={usersStatusActiveCount ?? undefined}
+                centerLabel="active"
+                subtitle="All users by account status (center = Active count)"
               />
               <StatusDoughnut
                 title="Programs"
@@ -961,8 +972,7 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Fills the left-side blank space */}
-            <div className="surface-card overflow-hidden">
+            <div className="surface-card min-h-0 flex-1 overflow-hidden">
               <div className="px-5 py-4 border-b border-border bg-gradient-to-r from-emerald-50 via-background to-amber-50/40 dark:from-emerald-950/35 dark:via-background dark:to-amber-950/15">
                 <div className="flex items-end justify-between gap-3">
                   <div className="min-w-0">
@@ -1028,17 +1038,17 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Side panels */}
-          <div className="lg:col-span-4 flex flex-col gap-6">
-            <div className="surface-card overflow-hidden">
-              <div className="px-5 py-4 border-b border-border bg-gradient-to-r from-emerald-50 via-background to-amber-50/40 dark:from-emerald-950/35 dark:via-background dark:to-amber-950/15">
+          {/* Side panels — stretch to match left column height */}
+          <div className="lg:col-span-4 flex h-full min-h-0 flex-col gap-5">
+            <div className="surface-card flex min-h-[240px] flex-1 flex-col overflow-hidden">
+              <div className="shrink-0 px-5 py-4 border-b border-border bg-gradient-to-r from-emerald-50 via-background to-amber-50/40 dark:from-emerald-950/35 dark:via-background dark:to-amber-950/15">
                 <h2 className="text-base font-semibold tracking-tight text-foreground">Quick Actions</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Jump to the most used admin sections.
                 </p>
               </div>
-              <div className="p-5">
-                <div className="max-h-[320px] overflow-auto pr-1 [scrollbar-width:thin] [scrollbar-color:rgba(15,23,42,0.35)_transparent] dark:[scrollbar-color:rgba(255,255,255,0.25)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-900/20 dark:[&::-webkit-scrollbar-thumb]:bg-white/20 hover:[&::-webkit-scrollbar-thumb]:bg-slate-900/30 dark:hover:[&::-webkit-scrollbar-thumb]:bg-white/30">
+              <div className="flex min-h-0 flex-1 flex-col p-5">
+                <div className="min-h-0 flex-1 overflow-auto pr-1 [scrollbar-width:thin] [scrollbar-color:rgba(15,23,42,0.35)_transparent] dark:[scrollbar-color:rgba(255,255,255,0.25)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-900/20 dark:[&::-webkit-scrollbar-thumb]:bg-white/20 hover:[&::-webkit-scrollbar-thumb]:bg-slate-900/30 dark:hover:[&::-webkit-scrollbar-thumb]:bg-white/30">
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
                     {quickActions.map((a) => (
                       <Link
@@ -1055,12 +1065,12 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="surface-card overflow-hidden">
-              <div className="px-5 py-4 border-b border-border bg-gradient-to-r from-emerald-50 via-background to-amber-50/40 dark:from-emerald-950/35 dark:via-background dark:to-amber-950/15">
+            <div className="surface-card flex min-h-[240px] flex-1 flex-col overflow-hidden">
+              <div className="shrink-0 px-5 py-4 border-b border-border bg-gradient-to-r from-emerald-50 via-background to-amber-50/40 dark:from-emerald-950/35 dark:via-background dark:to-amber-950/15">
                 <h2 className="text-base font-semibold tracking-tight text-foreground">Recent Activity</h2>
                 <p className="mt-1 text-xs text-muted-foreground">Latest events across modules.</p>
               </div>
-              <div className="p-5">
+              <div className="flex min-h-0 flex-1 flex-col p-5">
                 <div className="overflow-hidden rounded-xl border border-border bg-card">
                   <div className="divide-y divide-border/70">
                     {recentActivity.slice(0, 3).map((row, idx) => (

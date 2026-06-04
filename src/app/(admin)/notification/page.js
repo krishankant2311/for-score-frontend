@@ -205,8 +205,8 @@ export default function NotificationPage() {
         </div>
       </div>
 
-      <div className="mt-6 w-full overflow-x-auto border border-[#C8D7E9] rounded-lg shadow-md max-h-[500px] overflow-y-auto">
-        <Table className="min-w-[1200px]">
+      <div className="mt-6 w-full max-h-[500px] overflow-auto border border-[#C8D7E9] rounded-lg shadow-md">
+        <Table unwrap className="min-w-[1200px] w-full table-fixed">
           <TableHeader className="sticky top-0 z-10 bg-[#F2F5FA]">
             <TableRow className="border-b bg-[#F2F5FA]">
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">TITLE</TableHead>
@@ -234,8 +234,13 @@ export default function NotificationPage() {
                 const audienceLabel = getAudienceLabel(item.recipientMode, item.selectedUserIds);
                 return (
                   <TableRow key={item.id} className={idx % 2 === 1 ? "bg-gray-50/50" : ""}>
-                    <TableCell className="px-4 py-3 font-medium text-[#0A3161]">
-                      {item.title}
+                    <TableCell className="max-w-[220px] px-4 py-3 font-medium text-[#0A3161] align-top whitespace-normal">
+                      <p
+                        className="whitespace-normal break-words leading-snug"
+                        title={item.title}
+                      >
+                        {item.title}
+                      </p>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm max-w-[200px]">
                       <p className="truncate" title={item.message}>

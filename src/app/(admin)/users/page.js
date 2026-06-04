@@ -68,7 +68,25 @@ function extractListMeta(payload, pageLimit) {
 function normalizeStatus(raw) {
   const s = String(raw ?? "Active").trim().toLowerCase();
   if (s === "blocked" || s === "inactive" || s === "suspended" || s === "banned") return "Blocked";
+  if (s === "deleted") return "Deleted";
+  if (s === "pending") return "Pending";
+  if (s === "active") return "Active";
   return "Active";
+}
+
+function getUserStatusBadgeClass(status) {
+  switch (status) {
+    case "Active":
+      return "bg-green-100 text-green-800";
+    case "Blocked":
+      return "bg-red-100 text-red-800";
+    case "Pending":
+      return "bg-amber-100 text-amber-900";
+    case "Deleted":
+      return "bg-gray-200 text-gray-700";
+    default:
+      return "bg-slate-100 text-slate-800";
+  }
 }
 
 export default function UserManagementPage() {
@@ -330,8 +348,8 @@ export default function UserManagementPage() {
       </div>
 
       {/* Table */}
-      <div className="mt-6 w-full overflow-x-auto border border-[#C8D7E9] rounded-lg shadow-md max-h-[500px] overflow-y-auto">
-        <Table className="min-w-[1200px]">
+      <div className="mt-6 w-full max-h-[500px] overflow-auto border border-[#C8D7E9] rounded-lg shadow-md">
+        <Table unwrap className="min-w-[1200px] w-full table-fixed">
           <TableHeader className="sticky top-0 z-10 bg-[#F2F5FA]">
             <TableRow className="border-b bg-[#F2F5FA]">
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">NAME</TableHead>
@@ -368,10 +386,7 @@ export default function UserManagementPage() {
                   <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm">{user.weeklyDays}</TableCell>
                   <TableCell className="px-4 py-3">
                     <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.status === "Active"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                        }`}
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getUserStatusBadgeClass(user.status)}`}
                     >
                       {user.status}
                     </span>
