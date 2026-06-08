@@ -17,6 +17,7 @@ import { FaRegEdit } from "react-icons/fa";
 import { HiOutlineTrash } from "react-icons/hi";
 import { LuApple } from "react-icons/lu";
 import AdminHeaderCard from "@/components/admin/AdminHeaderCard";
+import AdminPagination from "@/components/admin/AdminPagination";
 import { fetchAllFoods, deleteFoodById, FOOD_CATEGORIES } from "@/lib/foodsApi";
 
 const DEFAULT_ROWS_PER_PAGE = 6;
@@ -191,7 +192,7 @@ export default function FoodsPage() {
             {isFetching ? (
               <TableRow>
                 <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                  Loading…
+                  Loading Food…
                 </TableCell>
               </TableRow>
             ) : paginated.length === 0 ? (
@@ -226,7 +227,11 @@ export default function FoodsPage() {
                       {f.category === "Fats" ? "Healthy Fats" : f.category}
                     </span>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{f.servingSize || "—"}</TableCell>
+                  <TableCell className="max-w-[200px] align-top whitespace-normal text-sm text-muted-foreground">
+                    <span className="break-words leading-snug" title={f.servingSize || undefined}>
+                      {f.servingSize || "—"}
+                    </span>
+                  </TableCell>
                   <TableCell>{f.calories} kcal</TableCell>
                   <TableCell className="text-sm">
                     {f.protein} / {f.carbs} / {f.fats}
@@ -259,12 +264,27 @@ export default function FoodsPage() {
         </Table>
       </div>
 
+      <AdminPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        rowsPerPage={rowsPerPage}
+        totalItems={filtered.length}
+        onPageChange={setCurrentPage}
+        onRowsPerPageChange={(n) => {
+          setRowsPerPage(n);
+          setCurrentPage(1);
+        }}
+      />
+
       {deleteTarget && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-[#0A3161]">Delete food?</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Remove <strong>{deleteTarget.name}</strong> from the app catalog?
+              Remove this item from the app catalog?
+            </p>
+            <p className="mt-1 max-h-24 overflow-y-auto break-words text-sm font-medium text-[#0A3161]">
+              {deleteTarget.name}
             </p>
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>

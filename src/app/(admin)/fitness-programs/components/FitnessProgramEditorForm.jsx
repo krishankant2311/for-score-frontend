@@ -44,6 +44,9 @@ import {
   clampExerciseTimeMinutes,
   clampExerciseCalories,
   clampInstructionsText,
+  clampStretchDetail,
+  MAX_STRETCH_DETAIL_LEN,
+  MAX_STRETCH_DURATION_MINUTES,
 } from "@/lib/fitnessProgramApi";
 import { FormSection, lbl, choiceChip } from "./FormSection";
 import { ensureProgramLogicDefaults, createEmptyWorkoutMeta } from "../data";
@@ -331,6 +334,7 @@ export default function FitnessProgramEditorForm({
   // Per-exercise media previews (A1/A2/...). Persisted URLs live on each exercise row: draft.workouts[letter][i].mediaUrls
   // Preview metadata (type/name) is kept only in component state keyed by `${letter}-${i}`.
   const [workoutRowMediaPreviews, setWorkoutRowMediaPreviews] = useState({});
+  const [stretchDeleteTarget, setStretchDeleteTarget] = useState(null);
 
   useEffect(() => {
     return () => {
@@ -531,10 +535,12 @@ export default function FitnessProgramEditorForm({
   };
 
   const updateStretch = (index, field, value) => {
+    const nextValue =
+      field === "detail" ? clampStretchDetail(value) : field === "name" ? clampExerciseName(value) : value;
     setDraft((d) => {
       if (!d) return d;
       const stretches = [...d.recovery.stretches];
-      stretches[index] = { ...stretches[index], [field]: value };
+      stretches[index] = { ...stretches[index], [field]: nextValue };
       return { ...d, recovery: { ...d.recovery, stretches } };
     });
   };
@@ -545,6 +551,12 @@ export default function FitnessProgramEditorForm({
       const stretches = d.recovery.stretches.filter((_, i) => i !== index);
       return { ...d, recovery: { ...d.recovery, stretches } };
     });
+    setStretchDeleteTarget(null);
+  };
+
+  const confirmRemoveStretch = () => {
+    if (stretchDeleteTarget == null) return;
+    removeStretch(stretchDeleteTarget.index);
   };
 
   const addStretch = () => {
@@ -2427,7 +2439,7 @@ export default function FitnessProgramEditorForm({
                             <TableHead className="w-[min(200px,38vw)] px-2 py-3 text-[#2158A3] font-semibold">
                               Tag <ReqMark />
                             </TableHead>
-                            <TableHead className="w-16 min-w-[4rem] px-2 py-3 text-[#2158A3] font-semibold">
+                            <TableHead className="w-24 min-w-[6rem] px-2 py-3 text-[#2158A3] font-semibold">
                               Sets <ReqMark />
                             </TableHead>
                             <TableHead className="min-w-[100px] px-2 py-3 text-[#2158A3] font-semibold">
@@ -2448,8 +2460,8 @@ export default function FitnessProgramEditorForm({
                               <TableRow
                                 className="border-b border-[#EEF2F7] hover:bg-[#FAFCFF]/70"
                               >
-                                <TableCell className="px-2 py-2 align-middle">
-                                  <div className="flex items-center gap-1">
+                                <TableCell className="px-2 py-2 align-top whitespace-normal">
+                                  <div className="flex items-start gap-1">
                                     <span className="inline-flex h-8 min-w-[2rem] items-center justify-center rounded-lg bg-[#E8EEF4] text-xs font-bold text-[#0A3161]">
                                       {letter}
                                       {i + 1}
@@ -2472,77 +2484,89 @@ export default function FitnessProgramEditorForm({
                                     </Button>
                                   </div>
                                 </TableCell>
-                                <TableCell className="p-2 align-middle max-w-[220px]">
-                                  <Input
-                                    value={ex.name}
-                                    maxLength={MAX_EXERCISE_NAME_LEN}
-                                    autoComplete="off"
-                                    onChange={(e) =>
-                                      updateWorkoutExercise(
-                                        letter,
-                                        i,
-                                        "name",
-                                        clampExerciseName(e.target.value)
-                                      )
-                                    }
-                                    className="h-10 border-[#C8D7E9] bg-white rounded-lg text-sm"
-                                  />
-                                  <p className="mt-0.5 text-[10px] text-[#94a3b8]">
-                                    Max {MAX_EXERCISE_NAME_LEN} chars (APK)
-                                  </p>
+                                <TableCell className="max-w-[220px] p-2 align-top whitespace-normal">
+                                  <div className="flex flex-col gap-0.5">
+                                    <Input
+                                      value={ex.name}
+                                      maxLength={MAX_EXERCISE_NAME_LEN}
+                                      autoComplete="off"
+                                      onChange={(e) =>
+                                        updateWorkoutExercise(
+                                          letter,
+                                          i,
+                                          "name",
+                                          clampExerciseName(e.target.value)
+                                        )
+                                      }
+                                      className="h-10 border-[#C8D7E9] bg-white rounded-lg text-sm"
+                                    />
+                                    <p className="min-h-[14px] text-[10px] leading-none text-[#94a3b8]">
+                                      Max {MAX_EXERCISE_NAME_LEN} chars (APK)
+                                    </p>
+                                  </div>
                                 </TableCell>
-                                <TableCell className="p-2 align-middle max-w-[200px]">
-                                  <select
-                                    value={tagValue}
-                                    onChange={(e) => updateWorkoutExercise(letter, i, "tag", e.target.value)}
-                                    className="h-10 w-full max-w-full truncate rounded-lg border border-[#C8D7E9] bg-white px-3 text-sm text-[#0A3161] outline-none focus:ring-2 focus:ring-[#0A3161]/25"
-                                  >
-                                    {TAG_OPTIONS.map((t) => (
-                                      <option key={t} value={t}>
-                                        {t}
-                                      </option>
-                                    ))}
-                                  </select>
+                                <TableCell className="max-w-[200px] p-2 align-top whitespace-normal">
+                                  <div className="flex flex-col gap-0.5">
+                                    <select
+                                      value={tagValue}
+                                      onChange={(e) => updateWorkoutExercise(letter, i, "tag", e.target.value)}
+                                      className="h-10 w-full max-w-full rounded-lg border border-[#C8D7E9] bg-white px-3 text-sm text-[#0A3161] outline-none focus:ring-2 focus:ring-[#0A3161]/25"
+                                    >
+                                      {TAG_OPTIONS.map((t) => (
+                                        <option key={t} value={t}>
+                                          {t}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <p className="min-h-[14px] text-[10px] leading-none text-transparent select-none">.</p>
+                                  </div>
                                 </TableCell>
-                                <TableCell className="p-2 align-middle">
-                                  <Input
-                                    type="number"
-                                    min={1}
-                                    max={MAX_EXERCISE_SETS}
-                                    placeholder="4"
-                                    value={
-                                      ex.target_sets === "" || ex.target_sets == null
-                                        ? ""
-                                        : String(ex.target_sets)
-                                    }
-                                    onChange={(e) => {
-                                      const v = e.target.value;
-                                      updateWorkoutExercise(
-                                        letter,
-                                        i,
-                                        "target_sets",
-                                        v === "" ? "" : clampExerciseSets(v)
-                                      );
-                                    }}
-                                    className="h-10 w-full min-w-[3.25rem] border-[#C8D7E9] bg-white rounded-lg text-sm"
-                                  />
-                                  <p className="mt-0.5 text-[10px] text-[#94a3b8]">Max {MAX_EXERCISE_SETS}</p>
+                                <TableCell className="w-24 min-w-[6rem] p-2 align-top whitespace-normal">
+                                  <div className="flex flex-col gap-0.5">
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      max={MAX_EXERCISE_SETS}
+                                      placeholder="4"
+                                      value={
+                                        ex.target_sets === "" || ex.target_sets == null
+                                          ? ""
+                                          : String(ex.target_sets)
+                                      }
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        updateWorkoutExercise(
+                                          letter,
+                                          i,
+                                          "target_sets",
+                                          v === "" ? "" : clampExerciseSets(v)
+                                        );
+                                      }}
+                                      className="h-10 w-full min-w-[5.5rem] border-[#C8D7E9] bg-white rounded-lg px-2 text-center text-sm tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                    />
+                                    <p className="min-h-[14px] text-center text-[10px] leading-none text-[#94a3b8]">
+                                      Max {MAX_EXERCISE_SETS}
+                                    </p>
+                                  </div>
                                 </TableCell>
-                                <TableCell className="p-2 align-middle">
-                                  <Input
-                                    value={ex.target_reps_range ?? ""}
-                                    maxLength={MAX_REP_RANGE_LEN}
-                                    onChange={(e) =>
-                                      updateWorkoutExercise(
-                                        letter,
-                                        i,
-                                        "target_reps_range",
-                                        clampRepRangeInput(e.target.value)
-                                      )
-                                    }
-                                    placeholder="8–12"
-                                    className="h-10 min-w-[5.5rem] border-[#C8D7E9] bg-white rounded-lg text-sm"
-                                  />
+                                <TableCell className="min-w-[100px] p-2 align-top whitespace-normal">
+                                  <div className="flex flex-col gap-0.5">
+                                    <Input
+                                      value={ex.target_reps_range ?? ""}
+                                      maxLength={MAX_REP_RANGE_LEN}
+                                      onChange={(e) =>
+                                        updateWorkoutExercise(
+                                          letter,
+                                          i,
+                                          "target_reps_range",
+                                          clampRepRangeInput(e.target.value)
+                                        )
+                                      }
+                                      placeholder="8–12"
+                                      className="h-10 w-full min-w-[5.5rem] border-[#C8D7E9] bg-white rounded-lg text-sm"
+                                    />
+                                    <p className="min-h-[14px] text-[10px] leading-none text-transparent select-none">.</p>
+                                  </div>
                                 </TableCell>
 
                                 <TableCell className="p-2 align-top">
@@ -3232,7 +3256,7 @@ export default function FitnessProgramEditorForm({
                       {draft.recovery.stretches.map((s, i) => (
                         <div
                           key={i}
-                          className="flex gap-2 sm:gap-3 rounded-xl border border-[#D4E4D4] bg-[#FAFDF8] p-3 shadow-sm"
+                          className="flex items-start gap-2 sm:gap-3 rounded-xl border border-[#D4E4D4] bg-[#FAFDF8] p-3 shadow-sm"
                         >
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0A3161] text-xs font-bold text-white">
                             {i + 1}
@@ -3246,6 +3270,7 @@ export default function FitnessProgramEditorForm({
                                 value={s.name}
                                 onChange={(e) => updateStretch(i, "name", e.target.value)}
                                 className="mt-1 h-10 border-[#C8D7E9] bg-white rounded-lg"
+                                maxLength={MAX_EXERCISE_NAME_LEN}
                               />
                             </div>
                             <div>
@@ -3257,7 +3282,11 @@ export default function FitnessProgramEditorForm({
                                 onChange={(e) => updateStretch(i, "detail", e.target.value)}
                                 className="mt-1 h-10 border-[#C8D7E9] bg-white rounded-lg"
                                 placeholder="e.g. 1m per side"
+                                maxLength={MAX_STRETCH_DETAIL_LEN}
                               />
+                              <p className="mt-1 text-[11px] text-[#5671A6]">
+                                Max {MAX_STRETCH_DURATION_MINUTES} minutes · {MAX_STRETCH_DETAIL_LEN} characters
+                              </p>
                             </div>
                           </div>
                           <Button
@@ -3266,7 +3295,12 @@ export default function FitnessProgramEditorForm({
                             size="icon"
                             className="h-9 w-9 shrink-0 text-[#B91C1C] hover:bg-red-50 hover:text-[#991B1B] disabled:opacity-40"
                             disabled={draft.recovery.stretches.length <= 1}
-                            onClick={() => removeStretch(i)}
+                            onClick={() =>
+                              setStretchDeleteTarget({
+                                index: i,
+                                name: s.name?.trim() || `Stretch ${i + 1}`,
+                              })
+                            }
                             aria-label="Delete stretch"
                             title={
                               draft.recovery.stretches.length <= 1
@@ -3711,6 +3745,28 @@ export default function FitnessProgramEditorForm({
           )}
         </div>
       </div>
+
+      {stretchDeleteTarget && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-[#0A3161]">Delete stretch?</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Remove this stretch from Block 2: The Big 4 stretches?
+            </p>
+            <p className="mt-2 max-h-24 overflow-y-auto break-words text-sm font-medium text-[#0A3161]">
+              {stretchDeleteTarget.name}
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setStretchDeleteTarget(null)}>
+                Cancel
+              </Button>
+              <Button type="button" className="bg-red-600 hover:bg-red-700" onClick={confirmRemoveStretch}>
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

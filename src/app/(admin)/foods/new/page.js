@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { HiOutlineArrowLeft, HiOutlineUpload } from "react-icons/hi";
 import { LuApple } from "react-icons/lu";
 import { createFood, FOOD_CATEGORIES } from "@/lib/foodsApi";
+import { sanitizeFoodNameInput, validateFoodName } from "@/lib/formValidation";
 
 export default function NewFoodPage() {
   const router = useRouter();
@@ -28,13 +29,19 @@ export default function NewFoodPage() {
     }`;
 
   const handleSave = async () => {
+    if (isSaving) return;
     if (!name.trim() || calories === "") {
-      toast.error("Name and calories are required");
+      toast.error("Name and calories are required", { id: "food-add-required" });
+      return;
+    }
+    const nameError = validateFoodName(name);
+    if (nameError) {
+      toast.error(nameError, { id: "food-add-name" });
       return;
     }
     const token = localStorage.getItem("token");
     if (!token) {
-      toast.error("Please login again");
+      toast.error("Please login again", { id: "food-add-auth" });
       return;
     }
     const fd = new FormData();
@@ -79,7 +86,13 @@ export default function NewFoodPage() {
       <div className="mt-6 space-y-5 rounded-2xl border border-[#C8D7E9] bg-white p-6 shadow-md">
         <div>
           <label className="text-sm font-medium text-[#0A3161]">Food name *</label>
-          <Input className="mt-1.5 h-12" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Grilled Chicken Breast" />
+          <Input
+            className="mt-1.5 h-12"
+            value={name}
+            onChange={(e) => setName(sanitizeFoodNameInput(e.target.value))}
+            placeholder="e.g. Grilled Chicken Breast"
+            maxLength={100}
+          />
         </div>
         <div>
           <label className="text-sm font-medium text-[#0A3161]">Serving size</label>

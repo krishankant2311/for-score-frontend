@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { HiOutlineArrowLeft, HiOutlineUpload } from "react-icons/hi";
 import { LuApple } from "react-icons/lu";
 import { fetchFoodById, updateFood, FOOD_CATEGORIES } from "@/lib/foodsApi";
+import { sanitizeFoodNameInput, validateFoodName } from "@/lib/formValidation";
 
 export default function EditFoodPage() {
   const { id } = useParams();
@@ -55,13 +56,31 @@ export default function EditFoodPage() {
   }, [id, router]);
 
   const handleSave = async () => {
+    if (isSaving) return;
+    const caloriesTrimmed = String(calories ?? "").trim();
+    if (!name.trim() || caloriesTrimmed === "") {
+      toast.error("Name and calories are required", { id: "food-edit-required" });
+      return;
+    }
+    if (Number.isNaN(Number(caloriesTrimmed)) || Number(caloriesTrimmed) < 0) {
+      toast.error("Calories must be a valid number", { id: "food-edit-calories" });
+      return;
+    }
+    const nameError = validateFoodName(name);
+    if (nameError) {
+      toast.error(nameError, { id: "food-edit-name" });
+      return;
+    }
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+      toast.error("Please login again", { id: "food-edit-auth" });
+      return;
+    }
     const fd = new FormData();
     fd.append("name", name.trim());
     fd.append("servingSize", servingSize.trim());
     fd.append("category", category);
-    fd.append("calories", calories);
+    fd.append("calories", caloriesTrimmed);
     fd.append("protein", protein || "0");
     fd.append("carbs", carbs || "0");
     fd.append("fats", fats || "0");
@@ -79,7 +98,7 @@ export default function EditFoodPage() {
     }
   };
 
-  if (loading) return <div className="py-16 text-center text-muted-foreground">Loading…</div>;
+  if (loading) return <div className="py-16 text-center text-muted-foreground">Loading Food…</div>;
 
   return (
     <div className="min-h-[80vh] py-8 px-1">
@@ -100,15 +119,20 @@ export default function EditFoodPage() {
 
       <div className="mt-6 space-y-5 rounded-2xl border border-[#C8D7E9] bg-white p-6 shadow-md">
         <div>
-          <label className="text-sm font-medium">Food name *</label>
-          <Input className="mt-1.5 h-12" value={name} onChange={(e) => setName(e.target.value)} />
+          <label className="text-sm font-medium text-[#0A3161]">Food name *</label>
+          <Input
+            className="mt-1.5 h-12"
+            value={name}
+            onChange={(e) => setName(sanitizeFoodNameInput(e.target.value))}
+            maxLength={100}
+          />
         </div>
         <div>
           <label className="text-sm font-medium">Serving size</label>
           <Input className="mt-1.5 h-12" value={servingSize} onChange={(e) => setServingSize(e.target.value)} />
         </div>
         <div>
-          <label className="text-sm font-medium">Category</label>
+          <label className="text-sm font-medium text-[#0A3161]">Category *</label>
           <div className="mt-2 flex flex-wrap gap-2">
             {FOOD_CATEGORIES.map((c) => (
               <button key={c} type="button" className={chip(category === c)} onClick={() => setCategory(c)}>
@@ -119,13 +143,13 @@ export default function EditFoodPage() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ["Calories", calories, setCalories],
+            ["Calories *", calories, setCalories],
             ["Protein (g)", protein, setProtein],
             ["Carbs (g)", carbs, setCarbs],
             ["Fat (g)", fats, setFats],
           ].map(([label, val, setVal]) => (
             <div key={label}>
-              <label className="text-sm font-medium">{label}</label>
+              <label className="text-sm font-medium text-[#0A3161]">{label}</label>
               <Input className="mt-1.5 h-12" value={val} onChange={(e) => setVal(e.target.value.replace(/[^\d.]/g, ""))} />
             </div>
           ))}

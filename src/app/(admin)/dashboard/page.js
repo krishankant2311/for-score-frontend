@@ -890,10 +890,10 @@ export default function Dashboard() {
           />
           <Card
             title="Total Programs"
-            amount={apiData?.cards?.exercisesToday ?? 0}
+            amount={apiData?.cards?.totalPrograms ?? 0}
             percentage={11}
             isIncrease={true}
-            para={`${timeframeLabelMap[timeframe]} Programs` ?? "All time Programs"}
+            para="Total fitness programs in catalog"
             icon={LiaDumbbellSolid}
             iconBg="bg-rose-500/10"
             iconColor="text-rose-700"

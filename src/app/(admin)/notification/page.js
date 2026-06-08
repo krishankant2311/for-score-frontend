@@ -211,8 +211,8 @@ export default function NotificationPage() {
             <TableRow className="border-b bg-[#F2F5FA]">
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">TITLE</TableHead>
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">MESSAGE</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">AUDIENCE</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">TYPE</TableHead>
+              <TableHead className="w-[10%] px-4 py-3 font-semibold text-[#2158A3]">AUDIENCE</TableHead>
+              <TableHead className="w-[8%] px-4 py-3 font-semibold text-[#2158A3]">TYPE</TableHead>
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">STATUS</TableHead>
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">SCHEDULED AT</TableHead>
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">CREATED AT</TableHead>
@@ -234,33 +234,33 @@ export default function NotificationPage() {
                 const audienceLabel = getAudienceLabel(item.recipientMode, item.selectedUserIds);
                 return (
                   <TableRow key={item.id} className={idx % 2 === 1 ? "bg-gray-50/50" : ""}>
-                    <TableCell className="max-w-[220px] px-4 py-3 font-medium text-[#0A3161] align-top whitespace-normal">
+                    <TableCell className="min-w-[180px] max-w-[280px] px-4 py-3 font-medium text-[#0A3161] align-top whitespace-normal">
                       <p
-                        className="whitespace-normal break-words leading-snug"
+                        className="whitespace-normal break-words leading-snug [overflow-wrap:anywhere]"
                         title={item.title}
                       >
                         {item.title}
                       </p>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm max-w-[200px]">
+                    <TableCell className="max-w-[200px] px-4 py-3 align-middle whitespace-normal text-sm font-normal text-[#2158A3]">
                       <p className="truncate" title={item.message}>
                         {item.message || "—"}
                       </p>
                     </TableCell>
-                    <TableCell className="px-4 py-3">
+                    <TableCell className="px-4 py-3 align-middle whitespace-nowrap">
                       <span
                         className={[
-                          "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium border",
+                          "inline-flex max-w-full items-center rounded-full px-3 py-1 text-xs font-medium border",
                           getAudienceBadgeClass(item.recipientMode),
                         ].join(" ")}
                       >
                         {audienceLabel}
                       </span>
                     </TableCell>
-                    <TableCell className="px-4 py-3">
+                    <TableCell className="px-4 py-3 align-middle whitespace-nowrap">
                       <span
                         className={[
-                          "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium border",
+                          "inline-flex max-w-full items-center rounded-full px-3 py-1 text-xs font-medium border",
                           getTypeBadgeClass(item.type),
                         ].join(" ")}
                       >

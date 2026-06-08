@@ -40,7 +40,7 @@ export default function ViewFeedbackModal({ open, feedback, onClose }) {
             </div>
             <div className="min-w-0">
               <h2 className="text-xl font-semibold text-white">Feedback Details</h2>
-              <p className="text-xs text-white/80 mt-0.5 truncate">
+              <p className="text-xs text-white/80 mt-0.5 break-words leading-snug">
                 {feedback.userName}
                 {feedback.userEmail ? ` • ${feedback.userEmail}` : ""}
               </p>

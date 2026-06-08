@@ -468,24 +468,26 @@ export default function FeedbackPage() {
                         >
                           <FaRegEye className="h-4 w-4" />
                         </button>
-                        <select
-                          value={selectRowStatusValue(row)}
-                          disabled={updatingIds.has(row.id)}
-                          aria-label="Change status"
-                          title="Change status"
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            applyStatusChange(row, v);
-                          }}
-                          className="h-8 w-[7.5rem] shrink-0 rounded-md border border-[#C8D7E9] bg-white px-1.5 text-xs font-medium text-[#0A3161] outline-none focus:ring-2 focus:ring-[#2158A3]/30 sm:w-[8.25rem]"
-                        >
-                          {ROW_STATUS_VALUES.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                          {extraStatusOpt ? <option value={extraStatusOpt}>{extraStatusOpt}</option> : null}
-                        </select>
+                        {row.statusKey !== "resolved" ? (
+                          <select
+                            value={selectRowStatusValue(row)}
+                            disabled={updatingIds.has(row.id)}
+                            aria-label="Change status"
+                            title="Change status"
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              applyStatusChange(row, v);
+                            }}
+                            className="h-8 w-[7.5rem] shrink-0 rounded-md border border-[#C8D7E9] bg-white px-1.5 text-xs font-medium text-[#0A3161] outline-none focus:ring-2 focus:ring-[#2158A3]/30 sm:w-[8.25rem]"
+                          >
+                            {ROW_STATUS_VALUES.map((o) => (
+                              <option key={o.value} value={o.value}>
+                                {o.label}
+                              </option>
+                            ))}
+                            {extraStatusOpt ? <option value={extraStatusOpt}>{extraStatusOpt}</option> : null}
+                          </select>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(row)}

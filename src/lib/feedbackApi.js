@@ -63,8 +63,15 @@ export function mapFeedbackFromApi(raw) {
 
   return {
     id: String(id),
-    userName: raw.userName ?? raw.name ?? raw.username ?? raw.user?.name ?? "—",
-    userEmail: raw.userEmail ?? raw.email ?? raw.user?.email ?? "",
+    userName:
+      raw.userName ??
+      raw.userId?.name ??
+      raw.name ??
+      raw.username ??
+      raw.user?.name ??
+      "—",
+    userEmail: raw.userEmail ?? raw.userId?.email ?? raw.user?.email ?? "",
+    contactEmail: raw.contactEmail ?? "",
     rating: raw.rating ?? raw.stars ?? raw.score ?? "—",
     type: raw.type ?? raw.feedbackType ?? raw.category ?? "",
     message: raw.message ?? raw.feedback ?? raw.text ?? raw.comment ?? "",

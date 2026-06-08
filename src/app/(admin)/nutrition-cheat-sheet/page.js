@@ -16,11 +16,14 @@ import { Button } from "@/components/ui/button";
 import { FaRegEdit } from "react-icons/fa";
 import { HiOutlineTrash } from "react-icons/hi";
 import AdminHeaderCard from "@/components/admin/AdminHeaderCard";
+import AdminPagination from "@/components/admin/AdminPagination";
 import {
-  fetchCheatSheetItems,
+  fetchAllCheatSheetItems,
   deleteCheatSheetItem,
   MACRO_TYPES,
 } from "@/lib/nutritionCheatSheetApi";
+
+const DEFAULT_ROWS_PER_PAGE = 6;
 
 const MACRO_STYLE = {
   protein: "text-sky-700",
@@ -41,6 +44,8 @@ export default function NutritionCheatSheetPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_ROWS_PER_PAGE);
 
   useEffect(() => {
     const load = async () => {
@@ -52,7 +57,7 @@ export default function NutritionCheatSheetPage() {
       }
       setIsFetching(true);
       try {
-        const list = await fetchCheatSheetItems({ token });
+        const list = await fetchAllCheatSheetItems({ token });
         setItems(list);
       } catch (err) {
         toast.error(err?.message || "Failed to load");
@@ -81,12 +86,29 @@ export default function NutritionCheatSheetPage() {
     return c;
   }, [items]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+  const start = (currentPage - 1) * rowsPerPage;
+  const paginated = filtered.slice(start, start + rowsPerPage);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || isDeleting) return;
     const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Session expired. Please login again.", { id: "cheat-sheet-delete-auth" });
+      return;
+    }
+    const itemId = String(deleteTarget._id || deleteTarget.id || "").trim();
+    if (!itemId) {
+      toast.error("Invalid item. Please refresh and try again.", { id: "cheat-sheet-delete-id" });
+      return;
+    }
     setIsDeleting(true);
     try {
-      await deleteCheatSheetItem(deleteTarget._id, { token });
+      await deleteCheatSheetItem(itemId, { token });
       toast.success("Item removed");
       setDeleteTarget(null);
       setRefreshKey((k) => k + 1);
@@ -123,11 +145,21 @@ export default function NutritionCheatSheetPage() {
         <Input
           placeholder="Search by name or serving…"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1);
+          }}
           className="h-12 rounded-xl border-[#C8D7E9]"
         />
         <div className="flex flex-wrap gap-2">
-          <button type="button" className={chip(macroFilter === "all")} onClick={() => setMacroFilter("all")}>
+          <button
+            type="button"
+            className={chip(macroFilter === "all")}
+            onClick={() => {
+              setMacroFilter("all");
+              setCurrentPage(1);
+            }}
+          >
             All ({items.length})
           </button>
           {MACRO_TYPES.map((m) => (
@@ -135,7 +167,10 @@ export default function NutritionCheatSheetPage() {
               key={m.value}
               type="button"
               className={chip(macroFilter === m.value)}
-              onClick={() => setMacroFilter(m.value)}
+              onClick={() => {
+                setMacroFilter(m.value);
+                setCurrentPage(1);
+              }}
             >
               {m.label} ({counts[m.value] || 0})
             </button>
@@ -152,37 +187,45 @@ export default function NutritionCheatSheetPage() {
               <TableHead>Serving</TableHead>
               <TableHead>Macro (g)</TableHead>
               <TableHead>Calories</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="min-w-[148px] w-[148px] px-4 py-3 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isFetching ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-10 text-center">
-                  Loading…
+                  Loading Nutrition cheat sheets…
                 </TableCell>
               </TableRow>
-            ) : filtered.length === 0 ? (
+            ) : paginated.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                   No items yet.
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((row) => (
+              paginated.map((row) => (
                 <TableRow key={row._id}>
                   <TableCell>
                     <span className={`text-sm font-semibold ${MACRO_STYLE[row.macroType] || ""}`}>
                       {macroLabel(row.macroType)}
                     </span>
                   </TableCell>
-                  <TableCell className="font-medium">{row.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{row.servingSize}</TableCell>
+                  <TableCell className="max-w-[220px] align-top whitespace-normal font-medium">
+                    <span className="break-words leading-snug" title={row.name}>
+                      {row.name}
+                    </span>
+                  </TableCell>
+                  <TableCell className="max-w-[180px] align-top whitespace-normal text-muted-foreground">
+                    <span className="break-words leading-snug" title={row.servingSize}>
+                      {row.servingSize}
+                    </span>
+                  </TableCell>
                   <TableCell className={`font-semibold ${MACRO_STYLE[row.macroType] || ""}`}>
                     {row.macroAmountGrams}g
                   </TableCell>
                   <TableCell>{row.calories} cal</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="min-w-[148px] w-[148px] align-top px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       <button
                         type="button"
@@ -194,7 +237,10 @@ export default function NutritionCheatSheetPage() {
                       <button
                         type="button"
                         className="rounded-lg border border-red-200 p-2 text-red-600"
-                        onClick={() => setDeleteTarget(row)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget(row);
+                        }}
                       >
                         <HiOutlineTrash />
                       </button>
@@ -207,17 +253,34 @@ export default function NutritionCheatSheetPage() {
         </Table>
       </div>
 
+      <AdminPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        rowsPerPage={rowsPerPage}
+        totalItems={filtered.length}
+        onPageChange={setCurrentPage}
+        onRowsPerPageChange={(n) => {
+          setRowsPerPage(n);
+          setCurrentPage(1);
+        }}
+      />
+
       {deleteTarget && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6">
             <h3 className="font-semibold text-[#0A3161]">Delete cheat sheet item?</h3>
-            <p className="mt-2 text-sm text-muted-foreground">{deleteTarget.name}</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This action cannot be undone. The item will be removed from the cheat sheet.
+            </p>
+            <p className="mt-2 max-h-24 overflow-y-auto break-words text-sm font-medium text-[#0A3161]">
+              {deleteTarget.name}
+            </p>
             <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
                 Cancel
               </Button>
-              <Button className="bg-red-600" onClick={confirmDelete} disabled={isDeleting}>
-                Delete
+              <Button type="button" className="bg-red-600" onClick={confirmDelete} disabled={isDeleting}>
+                {isDeleting ? "Deleting…" : "Delete"}
               </Button>
             </div>
           </div>

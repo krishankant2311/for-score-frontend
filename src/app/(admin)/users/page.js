@@ -352,14 +352,14 @@ export default function UserManagementPage() {
         <Table unwrap className="min-w-[1200px] w-full table-fixed">
           <TableHeader className="sticky top-0 z-10 bg-[#F2F5FA]">
             <TableRow className="border-b bg-[#F2F5FA]">
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">NAME</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">EMAIL</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">GOAL</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">BODY TYPE</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">WEEKLY DAYS</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">STATUS</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">JOIN DATE</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">ACTIONS</TableHead>
+              <TableHead className="w-[14%] px-4 py-3 font-semibold text-[#2158A3]">NAME</TableHead>
+              <TableHead className="w-[18%] px-4 py-3 font-semibold text-[#2158A3]">EMAIL</TableHead>
+              <TableHead className="w-[12%] px-4 py-3 font-semibold text-[#2158A3]">GOAL</TableHead>
+              <TableHead className="w-[12%] px-4 py-3 font-semibold text-[#2158A3]">BODY TYPE</TableHead>
+              <TableHead className="w-[10%] px-4 py-3 font-semibold text-[#2158A3]">WEEKLY DAYS</TableHead>
+              <TableHead className="w-[8%] px-4 py-3 font-semibold text-[#2158A3]">STATUS</TableHead>
+              <TableHead className="w-[10%] px-4 py-3 font-semibold text-[#2158A3]">JOIN DATE</TableHead>
+              <TableHead className="w-[10%] px-4 py-3 text-right font-semibold text-[#2158A3]">ACTIONS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="bg-white">
@@ -375,25 +375,39 @@ export default function UserManagementPage() {
                   key={user.id != null && user.id !== "" ? String(user.id) : `user-row-${idx}-${user.email || ""}`}
                   className={idx % 2 === 1 ? "bg-gray-50/50" : ""}
                 >
-                  <TableCell className="px-4 py-3 font-medium text-[#0A3161]">{user.name}</TableCell>
-                  <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm">{user.email}</TableCell>
-                  <TableCell className="px-4 py-3">
-                    <span className="inline-flex items-center rounded-full bg-gray-200 px-2.5 py-0.5 text-xs  font-medium text-[#0A3161]">
-                      {user.goal}
+                  <TableCell className="px-4 py-3 align-middle whitespace-normal">
+                    <p className="break-words font-medium leading-snug text-[#0A3161]" title={user.name}>
+                      {user.name || "—"}
+                    </p>
+                  </TableCell>
+                  <TableCell className="px-4 py-3 align-middle whitespace-normal">
+                    <p className="break-all text-sm font-normal leading-snug text-[#2158A3]" title={user.email}>
+                      {user.email || "—"}
+                    </p>
+                  </TableCell>
+                  <TableCell className="px-4 py-3 align-middle whitespace-normal">
+                    <span className="inline-flex max-w-full items-center whitespace-normal break-words rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-medium text-[#0A3161]">
+                      {user.goal || "—"}
                     </span>
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm">{user.bodyType}</TableCell>
-                  <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm">{user.weeklyDays}</TableCell>
-                  <TableCell className="px-4 py-3">
+                  <TableCell className="px-4 py-3 align-middle whitespace-normal text-sm font-normal text-[#2158A3]">
+                    {user.bodyType || "—"}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 align-middle whitespace-nowrap text-sm font-normal text-[#2158A3]">
+                    {user.weeklyDays || "—"}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 align-middle whitespace-nowrap">
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getUserStatusBadgeClass(user.status)}`}
                     >
                       {user.status}
                     </span>
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm">{user.joinDate}</TableCell>
-                  <TableCell className="px-4 py-3">
-                    <div className="flex items-center gap-2">
+                  <TableCell className="px-4 py-3 align-middle whitespace-nowrap text-sm font-normal text-[#2158A3]">
+                    {user.joinDate || "—"}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 align-middle">
+                    <div className="flex items-center justify-end gap-2">
                       <button
                         type="button"
                         onClick={() => handleView(user.id)}

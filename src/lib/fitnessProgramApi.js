@@ -321,6 +321,8 @@ export const MAX_REP_RANGE_LEN = 32;
 export const MAX_REP_VALUE = 999;
 export const MAX_EXERCISE_CALORIES = 9999;
 export const MAX_EXERCISE_TIME_MINUTES = 60;
+export const MAX_STRETCH_DETAIL_LEN = 80;
+export const MAX_STRETCH_DURATION_MINUTES = 60;
 export const MAX_INSTRUCTIONS_LEN = 4000;
 export const EXERCISE_TAG_OPTIONS = ["Large Muscle", "Primary Strength", "Accessory", "Core"];
 
@@ -355,6 +357,32 @@ export function clampExerciseCalories(value) {
 
 export function clampInstructionsText(value) {
   return String(value ?? "").slice(0, MAX_INSTRUCTIONS_LEN);
+}
+
+export function clampStretchDetail(value) {
+  const raw = String(value ?? "");
+  if (/^\d+$/.test(raw.trim())) {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return "";
+    return String(Math.min(MAX_STRETCH_DURATION_MINUTES, Math.max(0, Math.floor(n))));
+  }
+  return raw.slice(0, MAX_STRETCH_DETAIL_LEN);
+}
+
+function stretchDetailDurationExceedsMax(detail) {
+  const text = String(detail ?? "");
+  const patterns = [
+    /(\d+(?:\.\d+)?)\s*(?:min(?:ute)?s?|m)\b/gi,
+    /(\d+(?:\.\d+)?)\s*$/i,
+  ];
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const mins = Number(match[1]);
+      if (Number.isFinite(mins) && mins > MAX_STRETCH_DURATION_MINUTES) return true;
+    }
+  }
+  return false;
 }
 
 export function normalizeExerciseTag(tag, targetMuscles) {
@@ -541,6 +569,12 @@ function validateStretchRow(s, index) {
   const detail = String(s?.detail ?? "").trim();
   if (!name) return `${slot}: Stretch name is required.`;
   if (!detail) return `${slot} (“${name}”): Detail / duration is required.`;
+  if (detail.length > MAX_STRETCH_DETAIL_LEN) {
+    return `${slot} (“${name}”): Detail / duration cannot exceed ${MAX_STRETCH_DETAIL_LEN} characters.`;
+  }
+  if (stretchDetailDurationExceedsMax(detail)) {
+    return `${slot} (“${name}”): Duration cannot exceed ${MAX_STRETCH_DURATION_MINUTES} minutes.`;
+  }
   return null;
 }
 

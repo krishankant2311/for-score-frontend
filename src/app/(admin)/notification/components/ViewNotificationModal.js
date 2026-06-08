@@ -38,7 +38,7 @@ export default function ViewNotificationModal({ open, notification, onClose }) {
             </div>
             <div className="min-w-0">
               <h2 className="text-xl font-semibold text-white">Notification Details</h2>
-              <p className="text-xs text-white/80 mt-0.5 truncate">{notification.title}</p>
+              <p className="text-xs text-white/80 mt-0.5 break-words leading-snug">{notification.title}</p>
             </div>
           </div>
         </div>
@@ -46,7 +46,9 @@ export default function ViewNotificationModal({ open, notification, onClose }) {
         <div className="p-6 bg-white space-y-4 overflow-y-auto max-h-[70vh]">
           <div className="rounded-xl border border-[#C8D7E9] bg-[#F2F5FA] px-4 py-3">
             <p className="text-xs font-semibold text-[#0A3161] uppercase tracking-wide">Meta</p>
-            <p className="mt-1.5 text-base font-semibold text-[#0A3161]">{notification.title}</p>
+            <p className="mt-1.5 break-words text-base font-semibold leading-snug text-[#0A3161]">
+              {notification.title}
+            </p>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
               <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 font-medium text-[#0A3161] border border-gray-200">
                 {getAudienceLabel(notification.recipientMode, notification.selectedUserIds)}

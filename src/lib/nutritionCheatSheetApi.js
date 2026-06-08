@@ -11,8 +11,14 @@ export const MACRO_TYPES = [
   { value: "fat", label: "Fat Sources" },
 ];
 
-export async function fetchCheatSheetItems({ token, search = "", macroType = "", limit = 500 } = {}) {
-  const params = { page: 1, limit, status: "active" };
+export async function fetchCheatSheetItems({
+  token,
+  search = "",
+  macroType = "",
+  page = 1,
+  limit = 50,
+} = {}) {
+  const params = { page, limit, status: "active" };
   if (search?.trim()) params.search = search.trim();
   if (macroType && macroType !== "all") params.macroType = macroType;
 
@@ -25,7 +31,22 @@ export async function fetchCheatSheetItems({ token, search = "", macroType = "",
     err.adminPayload = res?.data;
     throw err;
   }
-  return res.data.result?.items ?? [];
+  return res.data.result ?? { items: [], total: 0, page: 1, limit, totalPages: 1 };
+}
+
+export async function fetchAllCheatSheetItems({ token, search = "", macroType = "" } = {}) {
+  const all = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const result = await fetchCheatSheetItems({ token, search, macroType, page, limit: 100 });
+    all.push(...(result.items ?? []));
+    totalPages = result.totalPages ?? 1;
+    page += 1;
+  } while (page <= totalPages);
+
+  return all;
 }
 
 export async function fetchCheatSheetById(id, { token } = {}) {
@@ -59,7 +80,16 @@ export async function updateCheatSheetItem(id, body, { token } = {}) {
 }
 
 export async function deleteCheatSheetItem(id, { token } = {}) {
-  const res = await axios.post(apiUrl(`/api/admin/delete-nutrition-cheat-sheet/${encodeURIComponent(id)}`), {}, adminHeaders(token));
+  const itemId = String(id ?? "").trim();
+  if (!itemId) {
+    const err = new Error("Invalid item id");
+    throw err;
+  }
+  const res = await axios.post(
+    apiUrl(`/api/admin/delete-nutrition-cheat-sheet/${encodeURIComponent(itemId)}`),
+    {},
+    adminHeaders(token)
+  );
   if (!res?.data?.success) {
     const err = new Error(res?.data?.message || "Failed to delete item");
     err.adminPayload = res?.data;

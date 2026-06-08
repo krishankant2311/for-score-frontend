@@ -390,27 +390,27 @@ export default function NewNotificationPage() {
                   key={user.id}
                   type="button"
                   onClick={() => handleToggleUser(user.id)}
-                  className={`w-full flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors ${
+                  className={`w-full flex items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors ${
                     isSelected && recipientMode === "custom"
                       ? "border-[#0A3161] bg-[#F5F7FB]"
                       : "border-[#E0E7F5] bg-white hover:bg-[#F5F7FB]/70"
                   } ${recipientMode !== "custom" ? "cursor-default" : ""}`}
                 >
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0A3161] text-white text-sm font-semibold">
                       {user.name?.[0] || "U"}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-[#0A3161] truncate">
+                      <p className="text-sm font-medium text-[#0A3161] break-words leading-snug">
                         {user.name}
                       </p>
-                      <p className="text-xs text-[#5671A6] truncate">{user.email}</p>
+                      <p className="text-xs text-[#5671A6] break-all leading-snug">{user.email}</p>
                     </div>
                   </div>
-                  <div className="flex max-w-[42%] shrink-0 flex-col items-end gap-1">
+                  <div className="flex w-[7.5rem] shrink-0 flex-col items-end gap-1 self-start">
                     {user.goal ? (
                       <span
-                        className="inline-flex max-w-full items-center truncate rounded-full bg-[#E8F3FF] px-2.5 py-0.5 text-[11px] font-medium text-[#0A3161]"
+                        className="inline-flex max-w-full items-center whitespace-normal break-words rounded-full bg-[#E8F3FF] px-2.5 py-0.5 text-[11px] font-medium text-[#0A3161] text-right"
                         title={user.goal}
                       >
                         {user.goal}
