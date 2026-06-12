@@ -470,14 +470,7 @@ export default function Dashboard() {
       { time: "3h ago", event: "FAQ updated", meta: "Content team" },
     ];
 
-  const topExercises =
-    normalizeArray(apiData?.topExercises) ?? [
-      { name: "Squat", completions: 1420, change: "+8%" },
-      { name: "Push-up", completions: 1180, change: "+5%" },
-      { name: "Plank", completions: 940, change: "+3%" },
-      { name: "Jumping Jacks", completions: 760, change: "+2%" },
-      { name: "Lunges", completions: 690, change: "-1%" },
-    ];
+  const topPrograms = normalizeArray(apiData?.topPrograms) ?? [];
 
   // Users (monthly)
   const newUsersMonthlyData =
@@ -629,6 +622,7 @@ export default function Dashboard() {
             totalUsers: cards.totalUsers,
             activeToday: cards.activeToday,
             exercisesToday: cards.exercisesToday,
+            totalPrograms: cards.totalPrograms,
             nutritionLogsToday: cards.nutritionLogsToday,
             subscriptionRevenue: pickSubscriptionRevenue(cards),
           },
@@ -690,7 +684,7 @@ export default function Dashboard() {
               kvArrayToDoughnut(donuts.subscriptionStatus),
           },
           recentActivity: recentActivityUnified,
-          topExercises: normalizeArray(tables.topExercisesThisWeek) ?? [],
+          topPrograms: normalizeArray(tables.topProgramsThisWeek) ?? [],
         });
         setHasLoadedData(true);
       } catch (e) {
@@ -984,7 +978,7 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <Link
-                    href="/exercise-library"
+                    href="/fitness-programs"
                     className="shrink-0 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition hover:bg-accent"
                   >
                     View details
@@ -1000,8 +994,13 @@ export default function Dashboard() {
                     <div className="col-span-2 text-right">Change</div>
                   </div>
                   <div className="divide-y divide-border/70">
-                    {topExercises.slice(0, 5).map((row, idx) => {
-                      const name = row.name ?? row.exerciseName ?? "—";
+                    {topPrograms.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                        No program activity in this timeframe yet.
+                      </div>
+                    ) : (
+                    topPrograms.slice(0, 5).map((row, idx) => {
+                      const name = row.programName ?? row.name ?? "—";
                       const completions = row.completions ?? row.count ?? 0;
                       const change = typeof row.change === "string" ? row.change : null;
                       const down = (change ?? "").startsWith("-");
@@ -1031,7 +1030,7 @@ export default function Dashboard() {
                           </div>
                         </div>
                       );
-                    })}
+                    }))}
                   </div>
                 </div>
               </div>

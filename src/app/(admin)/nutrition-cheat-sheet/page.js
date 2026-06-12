@@ -182,12 +182,12 @@ export default function NutritionCheatSheetPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Section</TableHead>
-              <TableHead>Food</TableHead>
-              <TableHead>Serving</TableHead>
-              <TableHead>Macro (g)</TableHead>
-              <TableHead>Calories</TableHead>
-              <TableHead className="min-w-[148px] w-[148px] px-4 py-3 text-right">Actions</TableHead>
+              <TableHead className="align-top">Section</TableHead>
+              <TableHead className="align-top">Food</TableHead>
+              <TableHead className="align-top">Serving</TableHead>
+              <TableHead className="align-top">Macro (g)</TableHead>
+              <TableHead className="align-top">Calories</TableHead>
+              <TableHead className="min-w-[148px] w-[148px] px-4 py-3 text-right align-top">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -206,7 +206,7 @@ export default function NutritionCheatSheetPage() {
             ) : (
               paginated.map((row) => (
                 <TableRow key={row._id}>
-                  <TableCell>
+                  <TableCell className="align-top whitespace-normal">
                     <span className={`text-sm font-semibold ${MACRO_STYLE[row.macroType] || ""}`}>
                       {macroLabel(row.macroType)}
                     </span>
@@ -221,10 +221,10 @@ export default function NutritionCheatSheetPage() {
                       {row.servingSize}
                     </span>
                   </TableCell>
-                  <TableCell className={`font-semibold ${MACRO_STYLE[row.macroType] || ""}`}>
+                  <TableCell className={`align-top whitespace-normal font-semibold ${MACRO_STYLE[row.macroType] || ""}`}>
                     {row.macroAmountGrams}g
                   </TableCell>
-                  <TableCell>{row.calories} cal</TableCell>
+                  <TableCell className="align-top whitespace-normal">{row.calories} cal</TableCell>
                   <TableCell className="min-w-[148px] w-[148px] align-top px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       <button

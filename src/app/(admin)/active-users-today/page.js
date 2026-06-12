@@ -30,7 +30,7 @@ function mapApiUserToRow(u) {
     email: u?.email ?? "",
     goal: u?.fitnessTarget ?? u?.goalDuration ?? "",
     lastActiveAt: lastActive || "-",
-    sessionsToday: typeof u?.sessionsToday === "number" ? u.sessionsToday : "-",
+    sessionsToday: typeof u?.sessionsToday === "number" ? u.sessionsToday : 0,
   };
 }
 

@@ -8,7 +8,13 @@ import { Input } from "@/components/ui/input";
 import { HiOutlineArrowLeft, HiOutlineUpload } from "react-icons/hi";
 import { LuApple } from "react-icons/lu";
 import { fetchFoodById, updateFood, FOOD_CATEGORIES } from "@/lib/foodsApi";
-import { sanitizeFoodNameInput, validateFoodName } from "@/lib/formValidation";
+import {
+  sanitizeFoodNameInput,
+  validateFoodName,
+  isInRange,
+  MACRO_LIMITS,
+  normalizeNumberInput,
+} from "@/lib/formValidation";
 
 export default function EditFoodPage() {
   const { id } = useParams();
@@ -64,6 +70,13 @@ export default function EditFoodPage() {
     }
     if (Number.isNaN(Number(caloriesTrimmed)) || Number(caloriesTrimmed) < 0) {
       toast.error("Calories must be a valid number", { id: "food-edit-calories" });
+      return;
+    }
+    if (!isInRange(caloriesTrimmed, MACRO_LIMITS.calories)) {
+      toast.error(
+        `Calories must be between ${MACRO_LIMITS.calories.min} and ${MACRO_LIMITS.calories.max}.`,
+        { id: "food-edit-calories-range" }
+      );
       return;
     }
     const nameError = validateFoodName(name);
@@ -143,14 +156,21 @@ export default function EditFoodPage() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ["Calories *", calories, setCalories],
-            ["Protein (g)", protein, setProtein],
-            ["Carbs (g)", carbs, setCarbs],
-            ["Fat (g)", fats, setFats],
-          ].map(([label, val, setVal]) => (
+            ["Calories *", calories, setCalories, MACRO_LIMITS.calories],
+            ["Protein (g)", protein, setProtein, MACRO_LIMITS.grams],
+            ["Carbs (g)", carbs, setCarbs, MACRO_LIMITS.grams],
+            ["Fat (g)", fats, setFats, MACRO_LIMITS.grams],
+          ].map(([label, val, setVal, limits]) => (
             <div key={label}>
               <label className="text-sm font-medium text-[#0A3161]">{label}</label>
-              <Input className="mt-1.5 h-12" value={val} onChange={(e) => setVal(e.target.value.replace(/[^\d.]/g, ""))} />
+              <Input
+                className="mt-1.5 h-12"
+                value={val}
+                min={limits.min}
+                max={limits.max}
+                onChange={(e) => setVal(normalizeNumberInput(e.target.value, limits))}
+                inputMode="decimal"
+              />
             </div>
           ))}
         </div>
