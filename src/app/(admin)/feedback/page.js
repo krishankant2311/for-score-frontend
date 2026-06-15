@@ -17,7 +17,7 @@ import { HiOutlineTrash } from "react-icons/hi";
 import AdminHeaderCard from "@/components/admin/AdminHeaderCard";
 import ViewFeedbackModal from "./components/ViewFeedbackModal";
 import DeleteFeedbackModal from "./components/DeleteFeedbackModal";
-import { deleteFeedbackById, fetchAllFeedback, updateFeedbackStatusByAdmin } from "@/lib/feedbackApi";
+import { deleteFeedbackById, fetchAllFeedback, normalizeFeedbackStatusForApi, updateFeedbackStatusByAdmin } from "@/lib/feedbackApi";
 
 const DEFAULT_ROWS_PER_PAGE = 10;
 
@@ -34,9 +34,14 @@ const FILTER_API_STATUSES = [
   { value: "new", label: "New" },
   { value: "InProgress", label: "In progress" },
   { value: "Resolved", label: "Resolved" },
+  { value: "deleted", label: "Deleted" },
 ];
 
-const ROW_STATUS_VALUES = FILTER_API_STATUSES.filter((x) => x.value);
+const ROW_STATUS_VALUES = [
+  { value: "New", label: "New" },
+  { value: "InProgress", label: "In progress" },
+  { value: "Resolved", label: "Resolved" },
+];
 
 const MOCK_FEEDBACK = [
   {
@@ -141,12 +146,18 @@ export default function FeedbackPage() {
     load();
   }, [refreshKey, filterType, filterApiStatus, hasShownDemoToast]);
 
-  const openCount = items.filter((i) => i.statusKey !== "resolved").length;
+  const openCount = items.filter((i) => i.statusKey !== "resolved" && i.statusKey !== "deleted").length;
   const resolvedCount = items.filter((i) => i.statusKey === "resolved").length;
 
   const filtered = useMemo(() => {
     const q = searchTerm.toLowerCase();
     return items.filter((i) => {
+      if (filterType && String(i.type ?? "") !== filterType) return false;
+      if (filterApiStatus) {
+        const rowStatus = normalizeFeedbackStatusForApi(i.backendStatus ?? i.status);
+        const wanted = normalizeFeedbackStatusForApi(filterApiStatus);
+        if (rowStatus !== wanted) return false;
+      }
       return (
         (i.userName || "").toLowerCase().includes(q) ||
         (i.userEmail || "").toLowerCase().includes(q) ||
@@ -154,7 +165,7 @@ export default function FeedbackPage() {
         (i.type || "").toLowerCase().includes(q)
       );
     });
-  }, [items, searchTerm]);
+  }, [items, searchTerm, filterType, filterApiStatus]);
 
   const totalItems = filtered.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / rowsPerPage));
@@ -205,10 +216,9 @@ export default function FeedbackPage() {
       toast.error("Session expired. Please login again.", { id: "feedback-missing-token" });
       return;
     }
-    const trimmed = String(nextStatus ?? "").trim();
-    const same =
-      trimmed.toLowerCase() === String(row.backendStatus ?? "").trim().toLowerCase() ||
-      (trimmed === "InProgress" && String(row.backendStatus) === "InProgress");
+    const trimmed = normalizeFeedbackStatusForApi(nextStatus);
+    const backendNorm = normalizeFeedbackStatusForApi(row.backendStatus);
+    const same = trimmed === backendNorm;
     if (!trimmed || same) return;
 
     updateLockRef.current = true;
@@ -233,6 +243,7 @@ export default function FeedbackPage() {
   };
 
   const statusBadgeClass = (item) => {
+    if (item.statusKey === "deleted") return "bg-red-100 text-red-900";
     const raw = String(item.backendStatus ?? item.status ?? "").toLowerCase();
     if (raw.includes("deleted") || raw.includes("removed")) return "bg-red-100 text-red-900";
     if (item.statusKey === "resolved") return "bg-emerald-100 text-emerald-800";
@@ -260,20 +271,7 @@ export default function FeedbackPage() {
   };
 
   const selectRowStatusValue = (item) => {
-    const backend = String(item.backendStatus ?? "").trim();
-    const known = ROW_STATUS_VALUES.find(
-      (o) => o.value.toLowerCase() === backend.toLowerCase() || o.value === backend
-    );
-    if (known) return known.value;
-    if (!backend) return "new";
-    return backend;
-  };
-
-  const extraBackendStatusOption = (item) => {
-    const b = String(item.backendStatus ?? "").trim();
-    if (!b) return null;
-    if (ROW_STATUS_VALUES.some((o) => o.value === b || o.value.toLowerCase() === b.toLowerCase())) return null;
-    return b;
+    return normalizeFeedbackStatusForApi(item.backendStatus ?? item.status ?? "New");
   };
 
   /** @param {{ userName?: string; userEmail?: string }} row */
@@ -283,6 +281,14 @@ export default function FeedbackPage() {
     const em = String(row.userEmail ?? "").trim();
     if (em.includes("@")) return em.split("@")[0] || "User";
     return "—";
+  };
+
+  const hasActiveFilters = Boolean(filterType || filterApiStatus || searchTerm.trim());
+
+  const emptyMessage = () => {
+    if (items.length === 0) return "No feedback yet.";
+    if (hasActiveFilters) return "No data found.";
+    return "No feedback matches your search on this page.";
   };
 
   /** @param {{ status?: string; backendStatus?: string }} row */
@@ -406,7 +412,6 @@ export default function FeedbackPage() {
               </TableRow>
             ) : paginated.length > 0 ? (
               paginated.map((row, idx) => {
-                const extraStatusOpt = extraBackendStatusOption(row);
                 const statusLabel = feedbackStatusLabel(row);
                 return (
                   <TableRow key={row.id} className={idx % 2 === 1 ? "bg-gray-50/50" : ""}>
@@ -468,26 +473,24 @@ export default function FeedbackPage() {
                         >
                           <FaRegEye className="h-4 w-4" />
                         </button>
-                        {row.statusKey !== "resolved" ? (
-                          <select
-                            value={selectRowStatusValue(row)}
-                            disabled={updatingIds.has(row.id)}
-                            aria-label="Change status"
-                            title="Change status"
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              applyStatusChange(row, v);
-                            }}
-                            className="h-8 w-[7.5rem] shrink-0 rounded-md border border-[#C8D7E9] bg-white px-1.5 text-xs font-medium text-[#0A3161] outline-none focus:ring-2 focus:ring-[#2158A3]/30 sm:w-[8.25rem]"
-                          >
-                            {ROW_STATUS_VALUES.map((o) => (
-                              <option key={o.value} value={o.value}>
-                                {o.label}
-                              </option>
-                            ))}
-                            {extraStatusOpt ? <option value={extraStatusOpt}>{extraStatusOpt}</option> : null}
-                          </select>
-                        ) : null}
+                        <select
+                          value={selectRowStatusValue(row)}
+                          disabled={updatingIds.has(row.id)}
+                          aria-label="Change status"
+                          title="Change status"
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            applyStatusChange(row, v);
+                          }}
+                          className="h-8 w-[7.5rem] shrink-0 rounded-md border border-[#C8D7E9] bg-white px-1.5 text-xs font-medium text-[#0A3161] outline-none focus:ring-2 focus:ring-[#2158A3]/30 sm:w-[8.25rem]"
+                        >
+                          {ROW_STATUS_VALUES.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                        {row.statusKey !== "deleted" ? (
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(row)}
@@ -497,6 +500,7 @@ export default function FeedbackPage() {
                         >
                           <HiOutlineTrash className="h-4 w-4" />
                         </button>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -505,7 +509,7 @@ export default function FeedbackPage() {
             ) : (
               <TableRow>
                 <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                  {items.length === 0 ? "No feedback yet." : "No feedback matches your search on this page."}
+                  {emptyMessage()}
                 </TableCell>
               </TableRow>
             )}

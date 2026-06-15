@@ -32,22 +32,38 @@ function assertOkPayload(payload, fallbackMessage) {
   return data;
 }
 
+/** Map UI / query status values to backend enum */
+export function normalizeFeedbackStatusForApi(status) {
+  const raw = String(status ?? "").trim();
+  const low = raw.toLowerCase().replace(/\s+/g, "");
+  if (!raw) return "New";
+  if (low === "new" || low === "open" || low === "pending") return "New";
+  if (low === "inprogress" || low === "in-progress" || low === "progress") return "InProgress";
+  if (["resolved", "closed", "done", "completed"].includes(low)) return "Resolved";
+  if (low === "deleted" || low === "removed") return "Deleted";
+  if (["New", "InProgress", "Resolved", "Deleted"].includes(raw)) return raw;
+  return raw;
+}
+
 /** Display helper for badges */
 export function normalizeFeedbackStatusForUi(backendStatus) {
   const raw = String(backendStatus ?? "").trim();
   const low = raw.toLowerCase();
-  if (!raw) return { key: "new", label: "New", apiValue: "new" };
+  if (!raw) return { key: "new", label: "New", apiValue: "New" };
+  if (low === "deleted" || low === "removed") {
+    return { key: "deleted", label: "Deleted", apiValue: "Deleted" };
+  }
   if (
     ["resolved", "closed", "done", "completed"].includes(low) ||
     raw === "Resolved"
   ) {
-    return { key: "resolved", label: "Resolved", apiValue: raw };
+    return { key: "resolved", label: "Resolved", apiValue: "Resolved" };
   }
   if (["inprogress", "in-progress", "progress"].includes(low.replace(/\s/g, ""))) {
     return { key: "inprogress", label: "In Progress", apiValue: "InProgress" };
   }
   if (low === "new" || low === "open" || low === "pending") {
-    return { key: "new", label: raw === "Open" ? "Open" : "New", apiValue: low === "open" ? "Open" : "new" };
+    return { key: "new", label: raw === "Open" ? "Open" : "New", apiValue: "New" };
   }
   const label = raw.charAt(0).toUpperCase() + raw.slice(1);
   return { key: raw, label: label || "—", apiValue: raw };
@@ -214,7 +230,7 @@ export async function updateFeedbackStatusByAdmin(id, status, { token, baseUrl }
   const base = String(baseUrl).replace(/\/$/, "");
   const encId = encodeURIComponent(id);
   const headers = buildFeedbackAuthHeaders(token);
-  const statusStr = String(status ?? "").trim();
+  const statusStr = normalizeFeedbackStatusForApi(status);
   if (!statusStr) throw new Error("Missing status");
 
   const tries = [

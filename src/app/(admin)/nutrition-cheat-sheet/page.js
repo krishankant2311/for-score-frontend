@@ -180,14 +180,26 @@ export default function NutritionCheatSheetPage() {
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-[#C8D7E9] bg-white shadow-md">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="align-top">Section</TableHead>
-              <TableHead className="align-top">Food</TableHead>
-              <TableHead className="align-top">Serving</TableHead>
-              <TableHead className="align-top">Macro (g)</TableHead>
-              <TableHead className="align-top">Calories</TableHead>
-              <TableHead className="min-w-[148px] w-[148px] px-4 py-3 text-right align-top">Actions</TableHead>
+          <TableHeader className="sticky top-0 z-10 bg-[#F2F5FA]">
+            <TableRow className="border-b bg-[#F2F5FA]">
+              <TableHead className="min-w-[100px] px-4 py-3 align-middle font-semibold text-[#2158A3]">
+                Section
+              </TableHead>
+              <TableHead className="min-w-[180px] px-4 py-3 align-middle font-semibold text-[#2158A3]">
+                Food
+              </TableHead>
+              <TableHead className="min-w-[140px] px-4 py-3 align-middle font-semibold text-[#2158A3]">
+                Serving
+              </TableHead>
+              <TableHead className="min-w-[100px] px-4 py-3 align-middle font-semibold text-[#2158A3]">
+                Macro (g)
+              </TableHead>
+              <TableHead className="min-w-[90px] px-4 py-3 align-middle font-semibold text-[#2158A3]">
+                Calories
+              </TableHead>
+              <TableHead className="min-w-[148px] w-[148px] px-4 py-3 text-right align-middle font-semibold text-[#2158A3]">
+                Actions
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -200,32 +212,36 @@ export default function NutritionCheatSheetPage() {
             ) : paginated.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                  No items yet.
+                  {items.length === 0
+                    ? "No items yet."
+                    : searchTerm || macroFilter !== "all"
+                      ? "No data found."
+                      : "No items on this page."}
                 </TableCell>
               </TableRow>
             ) : (
               paginated.map((row) => (
                 <TableRow key={row._id}>
-                  <TableCell className="align-top whitespace-normal">
+                  <TableCell className="align-middle whitespace-normal">
                     <span className={`text-sm font-semibold ${MACRO_STYLE[row.macroType] || ""}`}>
                       {macroLabel(row.macroType)}
                     </span>
                   </TableCell>
-                  <TableCell className="max-w-[220px] align-top whitespace-normal font-medium">
+                  <TableCell className="max-w-[220px] align-middle whitespace-normal font-medium">
                     <span className="break-words leading-snug" title={row.name}>
                       {row.name}
                     </span>
                   </TableCell>
-                  <TableCell className="max-w-[180px] align-top whitespace-normal text-muted-foreground">
+                  <TableCell className="max-w-[180px] align-middle whitespace-normal text-muted-foreground">
                     <span className="break-words leading-snug" title={row.servingSize}>
                       {row.servingSize}
                     </span>
                   </TableCell>
-                  <TableCell className={`align-top whitespace-normal font-semibold ${MACRO_STYLE[row.macroType] || ""}`}>
+                  <TableCell className={`align-middle whitespace-normal font-semibold ${MACRO_STYLE[row.macroType] || ""}`}>
                     {row.macroAmountGrams}g
                   </TableCell>
-                  <TableCell className="align-top whitespace-normal">{row.calories} cal</TableCell>
-                  <TableCell className="min-w-[148px] w-[148px] align-top px-4 py-3 text-right">
+                  <TableCell className="align-middle whitespace-normal">{row.calories} cal</TableCell>
+                  <TableCell className="min-w-[148px] w-[148px] align-middle px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       <button
                         type="button"

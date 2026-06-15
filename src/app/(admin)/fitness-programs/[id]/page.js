@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import AdminHeaderCard from "@/components/admin/AdminHeaderCard";
+import AdminPagination from "@/components/admin/AdminPagination";
 import {
   getProgramDetail,
   MOCK_FITNESS_PROGRAMS,
@@ -166,6 +167,118 @@ function WorkoutLetterBlock({ letter, label, exercises }) {
         )}
       </div>
     </div>
+  );
+}
+
+const DEFAULT_STRETCHES_PER_PAGE = 5;
+
+function RecoverySection({ recovery }) {
+  const stretches = Array.isArray(recovery?.stretches) ? recovery.stretches : [];
+  const [stretchPage, setStretchPage] = useState(1);
+  const [stretchesPerPage, setStretchesPerPage] = useState(DEFAULT_STRETCHES_PER_PAGE);
+
+  const totalStretchPages = Math.max(1, Math.ceil(stretches.length / stretchesPerPage));
+
+  useEffect(() => {
+    setStretchPage((p) => Math.min(p, totalStretchPages));
+  }, [totalStretchPages, stretches.length, stretchesPerPage]);
+
+  const stretchStart = (stretchPage - 1) * stretchesPerPage;
+  const paginatedStretches = stretches.slice(stretchStart, stretchStart + stretchesPerPage);
+
+  return (
+    <section className="w-full min-w-0">
+      <h2 className="text-base font-semibold text-foreground mb-4">Part 3 · Recovery</h2>
+      <div className="grid w-full min-w-0 grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start lg:gap-6 xl:gap-8">
+        <div className="flex min-w-0 flex-col surface-card overflow-hidden self-start">
+          <div className="flex flex-wrap items-center gap-3 px-4 py-4 border-b border-border bg-gradient-to-r from-sky-50 via-background to-emerald-50/40 dark:from-sky-950/25 dark:to-emerald-950/15">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
+              <FaHeartbeat className="h-5 w-5" />
+            </span>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">
+                LISS cardio · {recovery.lissMinutes} min
+              </h3>
+              <p className="text-xs text-muted-foreground">Low-intensity session</p>
+            </div>
+          </div>
+          <div className="p-4 md:p-5 space-y-3 text-sm text-muted-foreground">
+            <p className="leading-relaxed whitespace-pre-wrap">{recovery.lissPrompt}</p>
+            {recovery.lissOptions ? (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {recovery.lissOptions.split(",").map((opt) => {
+                  const t = opt.trim();
+                  if (!t) return null;
+                  return (
+                    <span
+                      key={t}
+                      className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100"
+                    >
+                      {t}
+                    </span>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex min-w-0 flex-col surface-card overflow-hidden self-start">
+          <div className="flex flex-wrap items-center gap-3 px-4 py-4 border-b border-border bg-gradient-to-r from-emerald-50 via-background to-amber-50/35 dark:from-emerald-950/20 dark:to-amber-950/15">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-900 dark:bg-emerald-900/35 dark:text-emerald-100">
+              <FaLeaf className="h-5 w-5" />
+            </span>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Stretches</h3>
+              <p className="text-xs text-muted-foreground">
+                In order after cardio · {stretches.length} total
+              </p>
+            </div>
+          </div>
+          {stretches.length === 0 ? (
+            <p className="p-4 md:p-5 text-sm text-muted-foreground italic">No stretches listed.</p>
+          ) : (
+            <>
+              <ol className="p-4 md:p-5 space-y-3 list-none">
+                {paginatedStretches.map((s, i) => {
+                  const globalIndex = stretchStart + i;
+                  return (
+                    <li
+                      key={`${globalIndex}-${s.name || "stretch"}`}
+                      className="flex gap-3 rounded-lg border border-border/80 bg-muted/20 px-3 py-2.5"
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                        {globalIndex + 1}
+                      </span>
+                      <div className="min-w-0 text-sm">
+                        <p className="font-medium text-foreground">{s.name || "—"}</p>
+                        <p className="text-muted-foreground mt-0.5">{s.detail}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+              {stretches.length > DEFAULT_STRETCHES_PER_PAGE ? (
+                <div className="border-t border-border px-2 pb-2">
+                  <AdminPagination
+                    currentPage={stretchPage}
+                    totalPages={totalStretchPages}
+                    rowsPerPage={stretchesPerPage}
+                    totalItems={stretches.length}
+                    onPageChange={setStretchPage}
+                    onRowsPerPageChange={(n) => {
+                      setStretchesPerPage(n);
+                      setStretchPage(1);
+                    }}
+                    rowOptions={[4, 5, 8, 10]}
+                  />
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -516,72 +629,7 @@ export default function ViewFitnessProgramPage() {
           </section>
         )}
 
-        {detail?.recovery && (
-          <section className="w-full min-w-0">
-            <h2 className="text-base font-semibold text-foreground mb-4">Part 3 · Recovery</h2>
-            <div className="grid w-full min-w-0 grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6 xl:gap-8 2xl:grid-cols-2">
-              <div className="flex min-h-0 min-w-0 flex-col surface-card overflow-hidden lg:h-full">
-                <div className="flex flex-wrap items-center gap-3 px-4 py-4 border-b border-border bg-gradient-to-r from-sky-50 via-background to-emerald-50/40 dark:from-sky-950/25 dark:to-emerald-950/15">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
-                    <FaHeartbeat className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">
-                      LISS cardio · {detail.recovery.lissMinutes} min
-                    </h3>
-                    <p className="text-xs text-muted-foreground">Low-intensity session</p>
-                  </div>
-                </div>
-                <div className="p-4 md:p-5 space-y-3 text-sm text-muted-foreground">
-                  <p className="leading-relaxed whitespace-pre-wrap">{detail.recovery.lissPrompt}</p>
-                  {detail.recovery.lissOptions ? (
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {detail.recovery.lissOptions.split(",").map((opt) => {
-                        const t = opt.trim();
-                        if (!t) return null;
-                        return (
-                          <span
-                            key={t}
-                            className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100"
-                          >
-                            {t}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-              <div className="flex min-h-0 min-w-0 flex-col surface-card overflow-hidden lg:h-full">
-                <div className="flex flex-wrap items-center gap-3 px-4 py-4 border-b border-border bg-gradient-to-r from-emerald-50 via-background to-amber-50/35 dark:from-emerald-950/20 dark:to-amber-950/15">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-900 dark:bg-emerald-900/35 dark:text-emerald-100">
-                    <FaLeaf className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground">Stretches</h3>
-                    <p className="text-xs text-muted-foreground">In order after cardio</p>
-                  </div>
-                </div>
-                <ol className="p-4 md:p-5 space-y-3 list-none">
-                  {detail.recovery.stretches.map((s, i) => (
-                    <li
-                      key={i}
-                      className="flex gap-3 rounded-lg border border-border/80 bg-muted/20 px-3 py-2.5"
-                    >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                        {i + 1}
-                      </span>
-                      <div className="min-w-0 text-sm">
-                        <p className="font-medium text-foreground">{s.name || "—"}</p>
-                        <p className="text-muted-foreground mt-0.5">{s.detail}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            </div>
-          </section>
-        )}
+        {detail?.recovery && <RecoverySection recovery={detail.recovery} />}
 
         {!hasSchedule && !hasWorkouts && detail && id !== FOUNDATIONS_PROGRAM_ID && (
           <p className="text-sm text-muted-foreground text-center py-6 rounded-xl border border-dashed border-border bg-muted/20">

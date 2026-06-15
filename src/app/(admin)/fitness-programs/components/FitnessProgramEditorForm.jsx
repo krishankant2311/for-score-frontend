@@ -560,19 +560,26 @@ export default function FitnessProgramEditorForm({
   };
 
   const addStretch = () => {
-    const stretches = draft?.recovery?.stretches ?? [];
-    const err = validateRecoveryBlockBeforeAddStretch(stretches);
-    if (err) {
-      toast.error(err, { id: "fitness-program-add-stretch" });
-      return;
+    const stretches = Array.isArray(draft?.recovery?.stretches) ? draft.recovery.stretches : [];
+    const last = stretches[stretches.length - 1];
+    const lastIsEmpty =
+      !last ||
+      (!String(last?.name ?? "").trim() && !String(last?.detail ?? "").trim());
+    if (!lastIsEmpty) {
+      const err = validateRecoveryBlockBeforeAddStretch(stretches);
+      if (err) {
+        toast.error(err, { id: "fitness-program-add-stretch" });
+        return;
+      }
     }
     setDraft((d) => {
       if (!d) return d;
+      const current = Array.isArray(d.recovery?.stretches) ? d.recovery.stretches : [];
       return {
         ...d,
         recovery: {
           ...d.recovery,
-          stretches: [...d.recovery.stretches, { name: "", detail: "" }],
+          stretches: [...current, { name: "", detail: "" }],
         },
       };
     });
@@ -3253,7 +3260,7 @@ export default function FitnessProgramEditorForm({
                   </div>
                   <div className="p-5 md:p-6">
                     <div className="max-h-[520px] overflow-y-auto pr-1 space-y-3 [scrollbar-width:thin] [scrollbar-color:rgba(10,49,97,0.28)_transparent] dark:[scrollbar-color:rgba(255,255,255,0.25)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-900/20 dark:[&::-webkit-scrollbar-thumb]:bg-white/20 hover:[&::-webkit-scrollbar-thumb]:bg-slate-900/30 dark:hover:[&::-webkit-scrollbar-thumb]:bg-white/30">
-                      {draft.recovery.stretches.map((s, i) => (
+                      {(Array.isArray(draft.recovery?.stretches) ? draft.recovery.stretches : []).map((s, i) => (
                         <div
                           key={i}
                           className="flex items-start gap-2 sm:gap-3 rounded-xl border border-[#D4E4D4] bg-[#FAFDF8] p-3 shadow-sm"
@@ -3294,7 +3301,7 @@ export default function FitnessProgramEditorForm({
                             variant="ghost"
                             size="icon"
                             className="h-9 w-9 shrink-0 text-[#B91C1C] hover:bg-red-50 hover:text-[#991B1B] disabled:opacity-40"
-                            disabled={draft.recovery.stretches.length <= 1}
+                            disabled={(draft.recovery?.stretches?.length ?? 0) <= 1}
                             onClick={() =>
                               setStretchDeleteTarget({
                                 index: i,
@@ -3303,7 +3310,7 @@ export default function FitnessProgramEditorForm({
                             }
                             aria-label="Delete stretch"
                             title={
-                              draft.recovery.stretches.length <= 1
+                              (draft.recovery?.stretches?.length ?? 0) <= 1
                                 ? "At least one stretch required"
                                 : "Delete stretch"
                             }
