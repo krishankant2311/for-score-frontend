@@ -247,12 +247,12 @@ export default function FaqPage() {
         <Table className="min-w-[1200px]">
           <TableHeader className="sticky top-0 z-10 bg-[#F2F5FA]">
             <TableRow className="border-b bg-[#F2F5FA]">
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">QUESTION</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">ANSWER</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">CATEGORY</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">STATUS</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">CREATED AT</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">ACTIONS</TableHead>
+              <TableHead className="px-4 py-3 align-middle font-semibold text-[#2158A3]">QUESTION</TableHead>
+              <TableHead className="px-4 py-3 align-middle font-semibold text-[#2158A3]">ANSWER</TableHead>
+              <TableHead className="px-4 py-3 align-middle font-semibold text-[#2158A3]">CATEGORY</TableHead>
+              <TableHead className="px-4 py-3 align-middle font-semibold text-[#2158A3]">STATUS</TableHead>
+              <TableHead className="px-4 py-3 align-middle font-semibold text-[#2158A3]">CREATED AT</TableHead>
+              <TableHead className="px-4 py-3 align-middle font-semibold text-[#2158A3]">ACTIONS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="bg-white">
@@ -265,17 +265,17 @@ export default function FaqPage() {
             ) : paginatedFaqs.length > 0 ? (
               paginatedFaqs.map((faq, idx) => (
                 <TableRow key={faq.id} className={idx % 2 === 1 ? "bg-gray-50/50" : ""}>
-                  <TableCell className="px-4 py-3 font-medium text-[#0A3161] max-w-[240px] align-top">
+                  <TableCell className="max-w-[240px] px-4 py-3 align-middle font-medium text-[#0A3161] whitespace-normal">
                     <div className="fs-line-clamp-3" title={faq.question}>
                       {faq.question}
                     </div>
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm max-w-[240px] align-top">
+                  <TableCell className="max-w-[240px] px-4 py-3 align-middle text-sm font-normal text-[#2158A3] whitespace-normal">
                     <div className="fs-line-clamp-3" title={stripHtmlToText(faq.answer)}>
                       {stripHtmlToText(faq.answer) || "—"}
                     </div>
                   </TableCell>
-                  <TableCell className="px-4 py-3">
+                  <TableCell className="px-4 py-3 align-middle">
                     <span
                       className={[
                         "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium border",
@@ -285,7 +285,7 @@ export default function FaqPage() {
                       {faq.category}
                     </span>
                   </TableCell>
-                  <TableCell className="px-4 py-3">
+                  <TableCell className="px-4 py-3 align-middle">
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                         faq.status === "Active"
@@ -296,10 +296,10 @@ export default function FaqPage() {
                       {faq.status}
                     </span>
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm">
+                  <TableCell className="px-4 py-3 align-middle text-sm font-normal text-[#2158A3]">
                     {faq.createdAt}
                   </TableCell>
-                  <TableCell className="px-4 py-3">
+                  <TableCell className="px-4 py-3 align-middle">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"

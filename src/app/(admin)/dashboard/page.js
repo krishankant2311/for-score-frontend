@@ -21,6 +21,7 @@ import { LiaDumbbellSolid } from "react-icons/lia";
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import AdminHeaderCard from "@/components/admin/AdminHeaderCard";
+import { joinAdminPath } from "@/lib/subscriptionPlanApi";
 import StatusDoughnut from "./components/UserDistributionChart";
 import UserGrowthChart from "./components/UserGrowthChart";
 import ActiveUsersWeekChart from "./components/ActiveUsersWeekChart";
@@ -538,6 +539,7 @@ export default function Dashboard() {
   // Nutrition adherence (this week, %)
   const subscriptionRevenueWeekData =
     apiData?.charts?.subscriptionRevenueWeek ??
+    apiData?.charts?.nutritionAdherenceWeek ??
     (apiData ? emptyBarChart("Revenue", "#155dfc") : {
       labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
       datasets: [
@@ -568,22 +570,39 @@ export default function Dashboard() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        const endpoints = [`${baseUrl}/api/admin/dashboard`];
+        const headers = { token, Authorization: `Bearer ${token}` };
+        const base = baseUrl.replace(/\/$/, "");
+        const endpoints = [
+          joinAdminPath(baseUrl, "dashboard"),
+          `${base}/api/admin/dashboard`,
+        ];
         let res = null;
+        let lastErr = null;
 
         for (const url of endpoints) {
           try {
             res = await axios.get(url, {
-              headers: { token },
+              headers,
               params: { timeframe },
+              timeout: 45000,
             });
-            break;
+            if (res?.status === 200) break;
           } catch (e) {
+            lastErr = e;
             res = null;
           }
         }
-        console.log(res);
-        if (!res) throw new Error("Dashboard API not reachable.");
+
+        if (!res) {
+          const status = lastErr?.response?.status;
+          const apiMsg = lastErr?.response?.data?.message;
+          throw new Error(
+            apiMsg ||
+              (status === 404
+                ? "Dashboard API not found. Check NEXT_PUBLIC_API_BASE_URL and redeploy the backend."
+                : "Dashboard API not reachable.")
+          );
+        }
 
         const payload = res?.data?.result ?? res?.data ?? {};
         setRawApiPayload(payload);
@@ -651,7 +670,7 @@ export default function Dashboard() {
                 datasetLabel: "Programs Completed",
                 color: "#0A3161",
               }),
-            nutritionAdherenceWeek:
+            subscriptionRevenueWeek:
               coerceChartJs(charts.subscriptionRevenueWeek, "bar") ??
               coerceChartJs(charts.subscriptionRevenueByDay, "bar") ??
               coerceChartJs(charts.subscriptionAmountByDay, "bar") ??
@@ -667,6 +686,14 @@ export default function Dashboard() {
                 valueKey: "amount",
                 datasetLabel: "Revenue",
                 color: "#155dfc",
+              }),
+            nutritionAdherenceWeek:
+              coerceChartJs(charts.nutritionAdherenceWeek, "bar") ??
+              seriesToBar(charts.nutritionAdherenceByDay, {
+                labelKey: "day",
+                valueKey: "percent",
+                datasetLabel: "Nutrition",
+                color: "#16a34a",
               }),
           },
           doughnuts: {
@@ -755,7 +782,7 @@ export default function Dashboard() {
               <SkeletonPanel title="Users" />
               <SkeletonPanel title="Programs" />
               {/* <SkeletonPanel title="Exercise" /> */}
-              <SkeletonPanel title="Nutrition" />
+              <SkeletonPanel title="Subscription Revenue" />
             </div>
 
             <div className="mt-8 grid gap-6 lg:grid-cols-12">

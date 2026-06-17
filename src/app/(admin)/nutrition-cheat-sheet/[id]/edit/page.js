@@ -26,6 +26,7 @@ export default function EditCheatSheetPage() {
   const [calories, setCalories] = useState("");
   const [sortOrder, setSortOrder] = useState("0");
   const [isSaving, setIsSaving] = useState(false);
+  const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
 
   const chip = (active) =>
     `w-full rounded-xl border px-3 py-2.5 text-sm font-medium ${
@@ -73,6 +74,10 @@ export default function EditCheatSheetPage() {
       );
       return;
     }
+    setShowUpdateConfirm(true);
+  };
+
+  const confirmUpdate = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
       toast.error("Please login again", { id: "cheat-sheet-edit-auth" });
@@ -93,6 +98,7 @@ export default function EditCheatSheetPage() {
         { token }
       );
       toast.success("Updated");
+      setShowUpdateConfirm(false);
       router.push("/nutrition-cheat-sheet");
     } catch (err) {
       toast.error(err?.message || "Update failed");
@@ -100,6 +106,8 @@ export default function EditCheatSheetPage() {
       setIsSaving(false);
     }
   };
+
+  const sectionLabel = MACRO_TYPES.find((m) => m.value === macroType)?.label || macroType;
 
   if (loading) return <div className="py-16 text-center">Loading Nutrition cheat sheets…</div>;
 
@@ -186,6 +194,41 @@ export default function EditCheatSheetPage() {
           </Button>
         </div>
       </div>
+
+      {showUpdateConfirm && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-[#0A3161]">Update cheat sheet item?</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Please confirm you want to save these changes.
+            </p>
+            <div className="mt-4 rounded-xl border border-[#C8D7E9] bg-[#F2F5FA] p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#5671A6]">
+                Item to be updated
+              </p>
+              <p className="mt-2 break-words text-sm font-semibold text-[#0A3161]">{name.trim() || "—"}</p>
+              <p className="mt-1 text-sm text-[#2158A3]">{sectionLabel}</p>
+              <p className="mt-1 break-words text-sm text-muted-foreground">{servingSize.trim() || "—"}</p>
+              <p className="mt-2 text-sm text-[#0A3161]">
+                {macroAmountGrams}g macro · {calories} cal
+              </p>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowUpdateConfirm(false)}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button type="button" className="bg-[#0A3161]" onClick={confirmUpdate} disabled={isSaving}>
+                {isSaving ? "Updating…" : "Confirm update"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

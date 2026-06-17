@@ -14,7 +14,7 @@ import {
 import { TbActivityHeartbeat } from "react-icons/tb";
 import { HiClock } from "react-icons/hi";
 
-export default function ViewActiveUserModal({ open, user, onClose }) {
+export default function ViewActiveUserModal({ open, user, isLoading, onClose }) {
   if (!open || !user) return null;
 
   const [isMounted, setIsMounted] = useState(false);
@@ -80,7 +80,9 @@ export default function ViewActiveUserModal({ open, user, onClose }) {
                   Last Active
                 </label>
               </div>
-              <p className="mt-2 text-sm font-medium text-[#0A3161]">{user.lastActiveAt}</p>
+              <p className="mt-2 text-sm font-medium text-[#0A3161]">
+                {user.lastSeen || user.lastActiveAt || "—"}
+              </p>
             </div>
             <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-2">
@@ -147,7 +149,7 @@ export default function ViewActiveUserModal({ open, user, onClose }) {
                   Body Type
                 </label>
               </div>
-              <p className="mt-2 text-sm font-medium text-[#0A3161]">{user.bodyType}</p>
+              <p className="mt-2 text-sm font-medium text-[#0A3161]">{user.bodyType || "—"}</p>
             </div>
           </div>
 
@@ -162,7 +164,7 @@ export default function ViewActiveUserModal({ open, user, onClose }) {
                   Weekly Workout Days
                 </label>
               </div>
-              <p className="mt-2 text-sm font-medium text-[#0A3161]">{user.weeklyDays}</p>
+              <p className="mt-2 text-sm font-medium text-[#0A3161]">{user.weeklyDays || "Not set"}</p>
             </div>
             <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm">
               <div className="flex items-center gap-3 mb-2">
@@ -173,7 +175,7 @@ export default function ViewActiveUserModal({ open, user, onClose }) {
                   Join Date
                 </label>
               </div>
-              <p className="mt-2 text-sm font-medium text-[#0A3161]">{user.joinDate}</p>
+              <p className="mt-2 text-sm font-medium text-[#0A3161]">{user.joinDate || "Not set"}</p>
             </div>
           </div>
         </div>

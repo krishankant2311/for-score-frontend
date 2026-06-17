@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HiOutlineCog } from "react-icons/hi";
 import { FaSave } from "react-icons/fa";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import AdminHeaderCard from "@/components/admin/AdminHeaderCard";
 
 const TABS = [
@@ -56,6 +57,10 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const passwordChangeLockRef = useRef(false);
 
   useEffect(() => {
     const load = async () => {
@@ -110,7 +115,20 @@ export default function SettingsPage() {
 
   const showLoadingSkeleton = isLoadingSettings && !hasFetchedSettings;
 
+  const sanitizeContactPhone = (value) => value.replace(/[^\d+\s().-]/g, "");
+
+  const handleContactPhoneChange = (value) => {
+    setContactPhone(sanitizeContactPhone(value));
+  };
+
   const handleSave = async () => {
+    const phone = contactPhone.trim();
+    if (phone && !/^[0-9+\s().-]+$/.test(phone)) {
+      toast.error("Contact phone may only contain numbers and + ( ) - space", {
+        id: "settings-contact-phone",
+      });
+      return;
+    }
     const token = localStorage.getItem("token");
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
 
@@ -153,35 +171,47 @@ export default function SettingsPage() {
   };
 
   const handleChangePassword = async () => {
+    if (passwordChangeLockRef.current || isChangingPassword) return;
+
     if (!currentPassword.trim() || !newPassword.trim() || !confirmNewPassword.trim()) {
-      toast.error("Please fill in all password fields");
+      toast.error("Please fill in all password fields", { id: "settings-password-fields" });
       return;
     }
 
     if (newPassword !== confirmNewPassword) {
-      toast.error("New password and confirmation do not match");
+      toast.error("New password and confirmation do not match", {
+        id: "settings-password-mismatch",
+      });
       return;
     }
 
     if (newPassword.length < minPasswordLength) {
-      toast.error(`New password must be at least ${minPasswordLength} characters long`);
+      toast.error(`New password must be at least ${minPasswordLength} characters long`, {
+        id: "settings-password-length",
+      });
       return;
     }
 
     if (requireUppercase && !/[A-Z]/.test(newPassword)) {
-      toast.error("Password must contain at least one uppercase letter");
+      toast.error("Password must contain at least one uppercase letter", {
+        id: "settings-password-upper",
+      });
       return;
     }
     if (requireLowercase && !/[a-z]/.test(newPassword)) {
-      toast.error("Password must contain at least one lowercase letter");
+      toast.error("Password must contain at least one lowercase letter", {
+        id: "settings-password-lower",
+      });
       return;
     }
     if (requireNumbers && !/[0-9]/.test(newPassword)) {
-      toast.error("Password must contain at least one number");
+      toast.error("Password must contain at least one number", { id: "settings-password-number" });
       return;
     }
     if (requireSpecialChars && !/[!@#$%^&*(),.?\":{}|<>]/.test(newPassword)) {
-      toast.error("Password must contain at least one special character");
+      toast.error("Password must contain at least one special character", {
+        id: "settings-password-special",
+      });
       return;
     }
 
@@ -216,6 +246,7 @@ export default function SettingsPage() {
     }
 
     setIsChangingPassword(true);
+    passwordChangeLockRef.current = true;
     try {
       const formData = new FormData();
       formData.append("email", emailFromToken);
@@ -240,6 +271,7 @@ export default function SettingsPage() {
       toast.error(err?.response?.data?.message || "Failed to update password");
     } finally {
       setIsChangingPassword(false);
+      passwordChangeLockRef.current = false;
     }
   };
 
@@ -342,9 +374,11 @@ export default function SettingsPage() {
                 <label className="text-xs font-medium text-[#2158A3]">Contact Phone</label>
                 <Input
                   type="tel"
+                  inputMode="tel"
                   className="mt-1.5 h-11 w-full rounded-lg border border-[#C8D7E9] bg-white px-3 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-[#0A3161]/30"
                   value={contactPhone}
-                  onChange={(e) => setContactPhone(e.target.value)}
+                  onChange={(e) => handleContactPhoneChange(e.target.value)}
+                  placeholder="+1 555 123 4567"
                 />
               </div>
             </div>
@@ -604,36 +638,66 @@ export default function SettingsPage() {
                   <label className="text-xs font-medium text-[#2158A3]">
                     Current Password <span className="text-red-500">*</span>
                   </label>
-                  <Input
-                    type="password"
-                    className="mt-1.5 h-11 w-full rounded-lg border border-[#C8D7E9] bg-white px-3 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-[#0A3161]/30"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                  />
+                  <div className="relative mt-1.5">
+                    <Input
+                      type={showCurrentPassword ? "text" : "password"}
+                      className="h-11 w-full rounded-lg border border-[#C8D7E9] bg-white px-3 pr-11 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-[#0A3161]/30"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      aria-label={showCurrentPassword ? "Hide current password" : "Show current password"}
+                    >
+                      {showCurrentPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <label className="text-xs font-medium text-[#2158A3]">
                     New Password <span className="text-red-500">*</span>
                   </label>
-                  <Input
-                    type="password"
-                    className="mt-1.5 h-11 w-full rounded-lg border border-[#C8D7E9] bg-white px-3 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-[#0A3161]/30"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                  />
+                  <div className="relative mt-1.5">
+                    <Input
+                      type={showNewPassword ? "text" : "password"}
+                      className="h-11 w-full rounded-lg border border-[#C8D7E9] bg-white px-3 pr-11 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-[#0A3161]/30"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+                    >
+                      {showNewPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <label className="text-xs font-medium text-[#2158A3]">
                     Confirm New Password <span className="text-red-500">*</span>
                   </label>
-                  <Input
-                    type="password"
-                    className="mt-1.5 h-11 w-full rounded-lg border border-[#C8D7E9] bg-white px-3 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-[#0A3161]/30"
-                    value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  />
+                  <div className="relative mt-1.5">
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      className="h-11 w-full rounded-lg border border-[#C8D7E9] bg-white px-3 pr-11 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-[#0A3161]/30"
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                    >
+                      {showConfirmPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                    </button>
+                  </div>
                 </div>
               </div>
 

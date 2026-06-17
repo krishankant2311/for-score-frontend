@@ -18,19 +18,77 @@ import AdminHeaderCard from "@/components/admin/AdminHeaderCard";
 
 const DEFAULT_ROWS_PER_PAGE = 6;
 
+function formatBodyType(u) {
+  const gender = String(u?.gender ?? "").trim();
+  if (gender && gender.toLowerCase() !== "null") {
+    return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+  }
+  const skill = String(u?.workoutSkillLevel ?? "").trim();
+  if (skill) return skill;
+  const prefs = String(u?.workoutPreferences ?? "").trim();
+  if (prefs) return prefs.split(",")[0].trim();
+  return "—";
+}
+
+function formatLastActive(u, sessionsToday) {
+  if (sessionsToday > 0) return "Online today";
+  const updatedAt = u?.updatedAt ? new Date(u.updatedAt) : null;
+  if (updatedAt && !Number.isNaN(updatedAt.getTime())) {
+    const minsAgo = (Date.now() - updatedAt.getTime()) / 60000;
+    if (minsAgo < 30) return "Active now";
+    return updatedAt.toLocaleString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+  return "—";
+}
+
+function formatWeeklyDays(u) {
+  const raw = u?.workoutFrequency;
+  if (raw != null && raw !== "") {
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > 0) return `${n} days/week`;
+    return `${raw} days/week`;
+  }
+  return "Not set";
+}
+
+function formatJoinDate(u) {
+  if (!u?.createdAt) return "Not set";
+  const d = new Date(u.createdAt);
+  if (Number.isNaN(d.getTime())) return "Not set";
+  return d.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function mapApiUserToRow(u) {
-  const lastActive =
-    u?.lastWorkout ??
-    (u?.updatedAt ? new Date(u.updatedAt).toLocaleString("en-IN") : "") ??
-    "";
+  const sessionsToday = typeof u?.sessionsToday === "number" ? u.sessionsToday : 0;
+  const updatedAt = u?.updatedAt ? new Date(u.updatedAt) : null;
 
   return {
     id: u?._id ?? u?.id,
     name: u?.name ?? "",
     email: u?.email ?? "",
-    goal: u?.fitnessTarget ?? u?.goalDuration ?? "",
-    lastActiveAt: lastActive || "-",
-    sessionsToday: typeof u?.sessionsToday === "number" ? u.sessionsToday : 0,
+    goal: u?.fitnessTarget ?? u?.goalDuration ?? "—",
+    lastSeen: formatLastActive(u, sessionsToday),
+    lastActiveAt: formatLastActive(u, sessionsToday),
+    sessionsToday,
+    bodyType: formatBodyType(u),
+    weeklyDays: formatWeeklyDays(u),
+    joinDate: formatJoinDate(u),
+    firstSeenToday:
+      sessionsToday > 0 && updatedAt && !Number.isNaN(updatedAt.getTime())
+        ? updatedAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+        : sessionsToday > 0
+          ? "Today"
+          : "—",
   };
 }
 
@@ -41,10 +99,31 @@ export default function ActiveUsersToday() {
   const [activeUsers, setActiveUsers] = useState([]);
   const [isFetching, setIsFetching] = useState(false);
   const [viewTarget, setViewTarget] = useState(null);
+  const [isLoadingView, setIsLoadingView] = useState(false);
 
-  const handleView = (id) => {
-    const user = activeUsers.find((u) => u.id === id);
-    setViewTarget(user || null);
+  const handleView = async (id) => {
+    const cached = activeUsers.find((u) => u.id === id);
+    if (cached) setViewTarget(cached);
+
+    const token = localStorage.getItem("token");
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+    if (!baseUrl || !token) return;
+
+    setIsLoadingView(true);
+    try {
+      const res = await axios.get(`${baseUrl}/api/admin/get-active-users/${encodeURIComponent(id)}`, {
+        headers: { token, Authorization: `Bearer ${token}` },
+      });
+      const raw = res?.data?.result;
+      if (raw) setViewTarget(mapApiUserToRow(raw));
+    } catch (err) {
+      console.error("Fetch active user detail failed:", err?.response?.data || err?.message);
+      if (!cached) {
+        toast.error(err?.response?.data?.message || "Failed to load user details");
+      }
+    } finally {
+      setIsLoadingView(false);
+    }
   };
 
   const filteredUsers = useMemo(() => {
@@ -150,7 +229,7 @@ export default function ActiveUsersToday() {
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">NAME</TableHead>
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">EMAIL</TableHead>
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">GOAL</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">LAST ACTIVE</TableHead>
+              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">LAST SEEN</TableHead>
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">SESSIONS TODAY</TableHead>
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">ACTIONS</TableHead>
             </TableRow>
@@ -175,7 +254,7 @@ export default function ActiveUsersToday() {
                     </span>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm">
-                    {user.lastActiveAt}
+                    {user.lastSeen || user.lastActiveAt || "—"}
                   </TableCell>
                   <TableCell className="px-4 py-3">
                     <span className="inline-flex items-center rounded-full bg-green-100 text-green-800 px-3 py-1 text-xs font-medium">
@@ -284,6 +363,7 @@ export default function ActiveUsersToday() {
       <ViewActiveUserModal
         open={!!viewTarget}
         user={viewTarget}
+        isLoading={isLoadingView}
         onClose={() => setViewTarget(null)}
       />
     </div>

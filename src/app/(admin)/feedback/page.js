@@ -396,7 +396,7 @@ export default function FeedbackPage() {
               <TableHead className="min-w-[220px] px-4 py-3 font-semibold text-[#2158A3]">MESSAGE</TableHead>
               <TableHead className="min-w-[140px] px-4 py-3 font-semibold text-[#2158A3]">STATUS</TableHead>
               <TableHead className="min-w-[9.5rem] whitespace-nowrap px-4 py-3 font-semibold text-[#2158A3]">
-                CREATED
+                CREATED AT
               </TableHead>
               <TableHead className="min-w-[260px] whitespace-nowrap px-4 py-3 text-right font-semibold text-[#2158A3]">
                 ACTIONS

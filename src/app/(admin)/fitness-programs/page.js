@@ -241,7 +241,7 @@ export default function FitnessProgramsPage() {
               <TableHead className="px-4 py-3 font-semibold text-primary/85">FREQ. / WK</TableHead>
               <TableHead className="px-4 py-3 font-semibold text-primary/85">AVG. SESSION</TableHead>
               <TableHead className="px-4 py-3 font-semibold text-primary/85">STATUS</TableHead>
-              <TableHead className="px-4 py-3 font-semibold text-primary/85">UPDATED</TableHead>
+              <TableHead className="px-4 py-3 font-semibold text-primary/85">UPDATED AT</TableHead>
               <TableHead className="min-w-[148px] w-[148px] px-4 py-3 font-semibold text-primary/85">
                 ACTIONS
               </TableHead>

@@ -583,6 +583,12 @@ export default function FitnessProgramEditorForm({
         },
       };
     });
+    requestAnimationFrame(() => {
+      document.getElementById("recovery-add-stretch-anchor")?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
   };
 
   const addRecoveryMediaUrls = (urls) => {
@@ -3320,6 +3326,7 @@ export default function FitnessProgramEditorForm({
                         </div>
                       ))}
                       <Button
+                        id="recovery-add-stretch-anchor"
                         type="button"
                         variant="outline"
                         className="w-full border-dashed border-[#C8D7E9] text-[#2158A3] hover:bg-[#F2F5FA]"

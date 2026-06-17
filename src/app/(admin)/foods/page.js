@@ -184,7 +184,7 @@ export default function FoodsPage() {
               <TableHead>Serving</TableHead>
               <TableHead>Calories</TableHead>
               <TableHead>P / C / F (g)</TableHead>
-              <TableHead>Created</TableHead>
+              <TableHead>Created At</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>

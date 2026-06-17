@@ -178,8 +178,8 @@ export default function NutritionCheatSheetPage() {
         </div>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-[#C8D7E9] bg-white shadow-md">
-        <Table>
+      <div className="mt-6 overflow-x-auto rounded-2xl border border-[#C8D7E9] bg-white shadow-md">
+        <Table className="min-w-[960px] table-fixed">
           <TableHeader className="sticky top-0 z-10 bg-[#F2F5FA]">
             <TableRow className="border-b bg-[#F2F5FA]">
               <TableHead className="min-w-[100px] px-4 py-3 align-middle font-semibold text-[#2158A3]">
@@ -197,7 +197,7 @@ export default function NutritionCheatSheetPage() {
               <TableHead className="min-w-[90px] px-4 py-3 align-middle font-semibold text-[#2158A3]">
                 Calories
               </TableHead>
-              <TableHead className="min-w-[148px] w-[148px] px-4 py-3 text-right align-middle font-semibold text-[#2158A3]">
+              <TableHead className="w-[120px] min-w-[120px] px-4 py-3 text-right align-middle font-semibold text-[#2158A3]">
                 Actions
               </TableHead>
             </TableRow>
@@ -241,24 +241,28 @@ export default function NutritionCheatSheetPage() {
                     {row.macroAmountGrams}g
                   </TableCell>
                   <TableCell className="align-middle whitespace-normal">{row.calories} cal</TableCell>
-                  <TableCell className="min-w-[148px] w-[148px] align-middle px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
+                  <TableCell className="w-[120px] min-w-[120px] px-4 py-3 align-middle text-right">
+                    <div className="flex items-center justify-end gap-2">
                       <button
                         type="button"
-                        className="rounded-lg border p-2 hover:bg-[#F2F5FA]"
-                        onClick={() => router.push(`/nutrition-cheat-sheet/${row._id}/edit`)}
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#C8D7E9] text-[#0A3161] hover:bg-[#F2F5FA]"
+                        onClick={() => router.push(`/nutrition-cheat-sheet/${row._id || row.id}/edit`)}
+                        aria-label="Edit item"
+                        title="Edit"
                       >
-                        <FaRegEdit />
+                        <FaRegEdit className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
-                        className="rounded-lg border border-red-200 p-2 text-red-600"
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
                         onClick={(e) => {
                           e.stopPropagation();
                           setDeleteTarget(row);
                         }}
+                        aria-label="Delete item"
+                        title="Delete"
                       >
-                        <HiOutlineTrash />
+                        <HiOutlineTrash className="h-4 w-4" />
                       </button>
                     </div>
                   </TableCell>
@@ -288,9 +292,18 @@ export default function NutritionCheatSheetPage() {
             <p className="mt-2 text-sm text-muted-foreground">
               This action cannot be undone. The item will be removed from the cheat sheet.
             </p>
-            <p className="mt-2 max-h-24 overflow-y-auto break-words text-sm font-medium text-[#0A3161]">
-              {deleteTarget.name}
-            </p>
+            <div className="mt-4 rounded-xl border border-[#C8D7E9] bg-[#F2F5FA] p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#5671A6]">
+                Item to be deleted
+              </p>
+              <p className="mt-2 break-words text-sm font-semibold text-[#0A3161]">
+                {deleteTarget.name || "—"}
+              </p>
+              <p className="mt-1 text-sm text-[#2158A3]">{macroLabel(deleteTarget.macroType)}</p>
+              {deleteTarget.servingSize ? (
+                <p className="mt-1 break-words text-sm text-muted-foreground">{deleteTarget.servingSize}</p>
+              ) : null}
+            </div>
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
                 Cancel
