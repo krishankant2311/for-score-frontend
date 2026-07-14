@@ -27,6 +27,7 @@ export default function EditCheatSheetPage() {
   const [sortOrder, setSortOrder] = useState("0");
   const [isSaving, setIsSaving] = useState(false);
   const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
+  const [loadedItem, setLoadedItem] = useState(null);
 
   const chip = (active) =>
     `w-full rounded-xl border px-3 py-2.5 text-sm font-medium ${
@@ -38,6 +39,7 @@ export default function EditCheatSheetPage() {
       const token = localStorage.getItem("token");
       try {
         const row = await fetchCheatSheetById(id, { token });
+        setLoadedItem(row);
         setName(row.name || "");
         setServingSize(row.servingSize || "");
         setMacroType(row.macroType || "protein");
@@ -108,6 +110,8 @@ export default function EditCheatSheetPage() {
   };
 
   const sectionLabel = MACRO_TYPES.find((m) => m.value === macroType)?.label || macroType;
+  const itemText = name.trim() || loadedItem?.name?.trim() || "—";
+  const itemSummary = `${itemText} · ${servingSize.trim() || loadedItem?.servingSize || "—"} · ${macroAmountGrams || loadedItem?.macroAmountGrams || "—"}g · ${calories || loadedItem?.calories || "—"} cal`;
 
   if (loading) return <div className="py-16 text-center">Loading Nutrition cheat sheets…</div>;
 
@@ -204,14 +208,14 @@ export default function EditCheatSheetPage() {
             </p>
             <div className="mt-4 rounded-xl border border-[#C8D7E9] bg-[#F2F5FA] p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-[#5671A6]">
-                Item to be updated
+                Item text
               </p>
-              <p className="mt-2 break-words text-sm font-semibold text-[#0A3161]">{name.trim() || "—"}</p>
+              <p className="mt-2 break-words text-base font-semibold text-[#0A3161]">{itemText}</p>
+              <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[#5671A6]">
+                Updated details
+              </p>
+              <p className="mt-2 break-words text-sm font-medium text-[#0A3161]">{itemSummary}</p>
               <p className="mt-1 text-sm text-[#2158A3]">{sectionLabel}</p>
-              <p className="mt-1 break-words text-sm text-muted-foreground">{servingSize.trim() || "—"}</p>
-              <p className="mt-2 text-sm text-[#0A3161]">
-                {macroAmountGrams}g macro · {calories} cal
-              </p>
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <Button

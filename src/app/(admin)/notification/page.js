@@ -53,7 +53,8 @@ export default function NotificationPage() {
   const [viewTarget, setViewTarget] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [serverTotalItems, setServerTotalItems] = useState(0);
-  const [serverTotalPages, setServerTotalPages] = useState(1);
+  const [serverTotalPages, setServerTotalPages] = useState(0);
+  const [statusCounts, setStatusCounts] = useState({ all: 0, sent: 0, scheduled: 0, draft: 0 });
 
   useEffect(() => {
     const load = async () => {
@@ -78,10 +79,19 @@ export default function NotificationPage() {
           baseUrl,
           page: currentPage,
           limit: rowsPerPage,
+          status: statusFilter,
         });
         setNotifications(Array.isArray(res.list) ? res.list : []);
         setServerTotalItems(res.totalItems ?? 0);
-        setServerTotalPages(res.totalPages ?? 1);
+        setServerTotalPages(res.totalPages ?? 0);
+        if (res.statusCounts) {
+          setStatusCounts({
+            all: res.statusCounts.all ?? 0,
+            sent: res.statusCounts.sent ?? 0,
+            scheduled: res.statusCounts.scheduled ?? 0,
+            draft: res.statusCounts.draft ?? 0,
+          });
+        }
       } catch (err) {
         console.error("Load notifications failed:", err?.adminPayload || err?.message);
         toast.error(err?.adminPayload?.message || err?.message || "Could not load notifications.", {
@@ -89,17 +99,17 @@ export default function NotificationPage() {
         });
         setNotifications([]);
         setServerTotalItems(0);
-        setServerTotalPages(1);
+        setServerTotalPages(0);
       } finally {
         setIsLoading(false);
       }
     };
     load();
-  }, [currentPage, rowsPerPage]);
+  }, [currentPage, rowsPerPage, statusFilter]);
 
   const filteredNotifications = useMemo(() => {
     const q = searchTerm.toLowerCase();
-    let list = notifications.filter((n) => {
+    return notifications.filter((n) => {
       const audienceLabel = getAudienceLabel(n.recipientMode, n.selectedUserIds);
       return (
         n.title.toLowerCase().includes(q) ||
@@ -108,34 +118,29 @@ export default function NotificationPage() {
         (n.type || "").toLowerCase().includes(q)
       );
     });
-    if (statusFilter === "sent") list = list.filter((n) => n.status === "Sent");
-    if (statusFilter === "scheduled") list = list.filter((n) => n.status === "Scheduled");
-    if (statusFilter === "draft") list = list.filter((n) => n.status === "Draft");
-    return list;
-  }, [notifications, searchTerm, statusFilter]);
+  }, [notifications, searchTerm]);
 
-  const totalItems = filteredNotifications.length;
-  const sentCount = notifications.filter((n) => n.status === "Sent").length;
-  const scheduledCount = notifications.filter((n) => n.status === "Scheduled").length;
-  const draftCount = notifications.filter((n) => n.status === "Draft").length;
+  const totalItems = searchTerm.trim() ? filteredNotifications.length : serverTotalItems;
+  const sentCount = statusCounts.sent;
+  const scheduledCount = statusCounts.scheduled;
+  const draftCount = statusCounts.draft;
 
-  const totalPages = serverTotalPages;
-  const paginatedItems = filteredNotifications;
-  const filteredLocally = Boolean(searchTerm.trim()) || statusFilter !== "all";
-  const displayLo =
-    totalItems === 0 ? 0 : filteredLocally ? 1 : (currentPage - 1) * rowsPerPage + 1;
-  const displayHi =
-    totalItems === 0
-      ? 0
-      : filteredLocally
-        ? totalItems
-        : (currentPage - 1) * rowsPerPage + notifications.length;
-  const ofCount = filteredLocally ? totalItems : serverTotalItems;
+  const totalPages = searchTerm.trim()
+    ? Math.max(0, Math.ceil(filteredNotifications.length / rowsPerPage))
+    : serverTotalPages;
+  const paginatedItems = searchTerm.trim()
+    ? filteredNotifications.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+    : filteredNotifications;
+  const showPagination = totalItems > 0 && totalPages > 1;
+  const displayLo = totalItems === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+  const displayHi = totalItems === 0 ? 0 : Math.min(currentPage * rowsPerPage, totalItems);
+  const ofCount = totalItems;
 
-  const goToPage = (p) => setCurrentPage(Math.max(1, Math.min(p, totalPages)));
+  const goToPage = (p) => setCurrentPage(Math.max(1, Math.min(p, Math.max(1, totalPages))));
 
   useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages);
+    if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
+    if (totalPages === 0 && currentPage !== 1) setCurrentPage(1);
   }, [currentPage, totalPages]);
 
   const paginationItems = useMemo(() => {
@@ -154,7 +159,7 @@ export default function NotificationPage() {
         stats={
           <p className="text-sm text-muted-foreground">
             Total:{" "}
-            <span className="font-semibold text-foreground">{serverTotalItems}</span>
+            <span className="font-semibold text-foreground">{statusCounts.all}</span>
             <span className="mx-2 text-muted-foreground/60">|</span>
             This page — Sent:{" "}
             <span className="font-semibold text-emerald-700 dark:text-emerald-300">{sentCount}</span>
@@ -182,7 +187,7 @@ export default function NotificationPage() {
 
         <div className="mt-4 flex gap-2 flex-wrap">
           {[
-            { key: "all", label: `All (${notifications.length})` },
+            { key: "all", label: `All (${statusCounts.all})` },
             { key: "sent", label: `Sent (${sentCount})` },
             { key: "scheduled", label: `Scheduled (${scheduledCount})` },
             { key: "draft", label: `Draft (${draftCount})` },
@@ -214,7 +219,12 @@ export default function NotificationPage() {
               <TableHead className="w-[10%] px-4 py-3 font-semibold text-[#2158A3]">AUDIENCE</TableHead>
               <TableHead className="w-[8%] px-4 py-3 font-semibold text-[#2158A3]">TYPE</TableHead>
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">STATUS</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">SCHEDULED AT</TableHead>
+              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">
+                <span className="block">SCHEDULED AT</span>
+                <span className="mt-0.5 block text-[10px] font-normal normal-case text-[#5671A6]">
+                  For scheduled notifications
+                </span>
+              </TableHead>
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">CREATED AT</TableHead>
               <TableHead className="font-semibold text-[#2158A3] px-4 py-3">ACTIONS</TableHead>
             </TableRow>
@@ -280,8 +290,18 @@ export default function NotificationPage() {
                         {item.status}
                       </span>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm">
-                      {item.scheduledAt || "—"}
+                    <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm whitespace-nowrap">
+                      <span
+                        title={
+                          item.hasScheduledAt
+                            ? `Scheduled for ${item.scheduledAt}`
+                            : item.status === "Scheduled"
+                              ? "Missing schedule time"
+                              : "Not applicable for sent or draft notifications"
+                        }
+                      >
+                        {item.scheduledAt}
+                      </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm">
                       {item.createdAt}
@@ -304,7 +324,19 @@ export default function NotificationPage() {
             ) : (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-gray-500 py-8">
-                  No notifications found
+                  <p>No notifications found</p>
+                  {statusFilter === "scheduled" ? (
+                    <p className="mt-2 text-xs text-[#5671A6]">
+                      Use <span className="font-medium">Add New Notification</span> → Delivery →{" "}
+                      <span className="font-medium">Schedule</span> to create one.
+                    </p>
+                  ) : null}
+                  {statusFilter === "draft" ? (
+                    <p className="mt-2 text-xs text-[#5671A6]">
+                      Use <span className="font-medium">Add New Notification</span> → Delivery →{" "}
+                      <span className="font-medium">Save Draft</span> to create one.
+                    </p>
+                  ) : null}
                 </TableCell>
               </TableRow>
             )}
@@ -336,10 +368,11 @@ export default function NotificationPage() {
         <div>
           <p className="text-sm text-gray-600">
             Showing {displayLo}-{displayHi} of {ofCount} items
-            {filteredLocally ? " (filtered on this page)" : ""}
+            {searchTerm.trim() ? " (search on this page)" : ""}
           </p>
         </div>
 
+        {showPagination ? (
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -394,6 +427,7 @@ export default function NotificationPage() {
             Next &gt;
           </button>
         </div>
+        ) : null}
       </div>
 
       <ViewNotificationModal

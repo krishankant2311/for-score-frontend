@@ -74,6 +74,43 @@ function normalizeStatus(raw) {
   return "Active";
 }
 
+function parseWorkoutPreferences(raw) {
+  if (raw == null || raw === "") return [];
+  if (Array.isArray(raw)) return raw.map(String).map((s) => s.trim()).filter(Boolean);
+  return String(raw)
+    .split(/[,;|]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function formatWorkoutSkillLevel(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  const key = s.toUpperCase();
+  if (key === "BEGINNER") return "Beginner";
+  if (key === "INTERMEDIATE") return "Intermediate";
+  if (key === "ADVANCED") return "Advanced";
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+function formatPreferenceLabel(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  if (/\s/.test(s)) return s;
+  return s
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function getSkillLevelBadgeClass(level) {
+  const key = String(level ?? "").toLowerCase();
+  if (key.includes("beginner")) return "border-sky-200 bg-sky-50 text-sky-800";
+  if (key.includes("intermediate")) return "border-amber-200 bg-amber-50 text-amber-800";
+  if (key.includes("advanced")) return "border-rose-200 bg-rose-50 text-rose-800";
+  return "border-indigo-100 bg-indigo-50 text-[#0A3161]";
+}
+
 function getUserStatusBadgeClass(status) {
   switch (status) {
     case "Active":
@@ -212,7 +249,8 @@ export default function UserManagementPage() {
             name: u?.name ?? "",
             email: u?.email ?? "",
             goal: u?.fitnessTarget ?? u?.goalDuration ?? "",
-            bodyType: u?.workoutPreferences ?? u?.workoutSkillLevel ?? u?.gender ?? "",
+            skillLevel: formatWorkoutSkillLevel(u?.workoutSkillLevel),
+            workoutPreferences: parseWorkoutPreferences(u?.workoutPreferences).map(formatPreferenceLabel),
             weeklyDays:
               typeof u?.workoutFrequency === "number"
                 ? `${u.workoutFrequency} days`
@@ -349,23 +387,24 @@ export default function UserManagementPage() {
 
       {/* Table */}
       <div className="mt-6 w-full max-h-[500px] overflow-auto border border-[#C8D7E9] rounded-lg shadow-md">
-        <Table unwrap className="min-w-[1200px] w-full table-fixed">
+        <Table unwrap className="min-w-[1320px] w-full table-fixed">
           <TableHeader className="sticky top-0 z-10 bg-[#F2F5FA]">
             <TableRow className="border-b bg-[#F2F5FA]">
-              <TableHead className="w-[14%] px-4 py-3 font-semibold text-[#2158A3]">NAME</TableHead>
-              <TableHead className="w-[18%] px-4 py-3 font-semibold text-[#2158A3]">EMAIL</TableHead>
-              <TableHead className="w-[12%] px-4 py-3 font-semibold text-[#2158A3]">GOAL</TableHead>
-              <TableHead className="w-[12%] px-4 py-3 font-semibold text-[#2158A3]">BODY TYPE</TableHead>
-              <TableHead className="w-[10%] px-4 py-3 font-semibold text-[#2158A3]">WEEKLY DAYS</TableHead>
-              <TableHead className="w-[8%] px-4 py-3 font-semibold text-[#2158A3]">STATUS</TableHead>
-              <TableHead className="w-[10%] px-4 py-3 font-semibold text-[#2158A3]">JOIN DATE</TableHead>
-              <TableHead className="w-[10%] px-4 py-3 text-right font-semibold text-[#2158A3]">ACTIONS</TableHead>
+              <TableHead className="w-[12%] px-4 py-3 align-middle font-semibold text-[#2158A3]">NAME</TableHead>
+              <TableHead className="w-[16%] px-4 py-3 align-middle font-semibold text-[#2158A3]">EMAIL</TableHead>
+              <TableHead className="w-[10%] px-4 py-3 align-middle font-semibold text-[#2158A3]">GOAL</TableHead>
+              <TableHead className="w-[9%] px-4 py-3 align-middle font-semibold text-[#2158A3]">SKILL LEVEL</TableHead>
+              <TableHead className="w-[13%] px-4 py-3 align-middle font-semibold text-[#2158A3]">PREFERENCES</TableHead>
+              <TableHead className="w-[9%] px-4 py-3 align-middle font-semibold text-[#2158A3]">WEEKLY DAYS</TableHead>
+              <TableHead className="w-[8%] px-4 py-3 align-middle font-semibold text-[#2158A3]">STATUS</TableHead>
+              <TableHead className="w-[9%] px-4 py-3 align-middle font-semibold text-[#2158A3]">JOIN DATE</TableHead>
+              <TableHead className="w-[10%] px-4 py-3 align-middle text-right font-semibold text-[#2158A3]">ACTIONS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="bg-white">
             {isFetchingUsers ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-gray-500 py-8">
+                <TableCell colSpan={9} className="text-center text-gray-500 py-8">
                   Loading users...
                 </TableCell>
               </TableRow>
@@ -390,8 +429,32 @@ export default function UserManagementPage() {
                       {user.goal || "—"}
                     </span>
                   </TableCell>
-                  <TableCell className="px-4 py-3 align-middle whitespace-normal text-sm font-normal text-[#2158A3]">
-                    {user.bodyType || "—"}
+                  <TableCell className="px-4 py-3 align-middle whitespace-nowrap">
+                    {user.skillLevel ? (
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${getSkillLevelBadgeClass(user.skillLevel)}`}
+                      >
+                        {user.skillLevel}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-[#2158A3]">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 align-middle whitespace-normal">
+                    {user.workoutPreferences.length ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {user.workoutPreferences.map((pref) => (
+                          <span
+                            key={pref}
+                            className="inline-flex max-w-full items-center whitespace-normal break-words rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-[#0A3161] border border-indigo-100"
+                          >
+                            {pref}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-[#2158A3]">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="px-4 py-3 align-middle whitespace-nowrap text-sm font-normal text-[#2158A3]">
                     {user.weeklyDays || "—"}
@@ -440,7 +503,7 @@ export default function UserManagementPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-gray-500 py-8">
+                <TableCell colSpan={9} className="text-center text-gray-500 py-8">
                   No users found
                 </TableCell>
               </TableRow>

@@ -1,7 +1,7 @@
 "use client";
 
 import { FaRegCommentDots, FaRegFileAlt, FaRegHeart, FaSignOutAlt } from "react-icons/fa";
-import { MdDashboard, MdFitnessCenter } from "react-icons/md";
+import { MdDashboard, MdFitnessCenter, MdOutlineSelfImprovement } from "react-icons/md";
 import { TbActivityHeartbeat } from "react-icons/tb";
 import { LiaDumbbellSolid } from "react-icons/lia";
 import { LuUsers, LuApple } from "react-icons/lu";
@@ -62,6 +62,11 @@ export default function Sidebar() {
       href: "/fitness-programs",
       label: "Fitness Programs",
       icon: MdFitnessCenter,
+    },
+    {
+      href: "/stretch-programs",
+      label: "Stretch Programs",
+      icon: MdOutlineSelfImprovement,
     },
     { href: "/foods", label: "Foods", icon: LuApple },
     { href: "/nutrition-cheat-sheet", label: "Nutrition Cheat Sheet", icon: TbChartPie },

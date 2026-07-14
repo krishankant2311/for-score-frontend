@@ -674,8 +674,8 @@ export default function ContentManagement() {
         </div>
 
         {/* Editor */}
-        <div className="mt-6 bg-white rounded-lg border border-[#C8D7E9] shadow-md p-6 md:p-4">
-          <h2 className="text-sm font-semibold text-[#0A3161] mb-3">{editorTitle}</h2>
+        <div className="mt-6 bg-white rounded-lg border border-[#C8D7E9] shadow-md p-6">
+          <h2 className="text-sm font-semibold text-[#0A3161] mb-4">{editorTitle}</h2>
 
           {activeTab === "social" ? (
             <div className="space-y-4">
@@ -707,8 +707,8 @@ export default function ContentManagement() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-[#C8D7E9] overflow-hidden">
-                <div className="flex items-center justify-between bg-[#F2F5FA] px-4 py-2">
+              <div className="rounded-lg border border-[#C8D7E9] overflow-hidden p-4">
+                <div className="flex items-center justify-between rounded-lg bg-[#F2F5FA] px-4 py-3">
                   <div className="text-xs font-semibold text-[#0A3161]">
                     Saved Links ({socialItems.length})
                   </div>
@@ -857,8 +857,8 @@ export default function ContentManagement() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-[#C8D7E9] overflow-hidden">
-                <div className="flex items-center justify-between bg-[#F2F5FA] px-4 py-2">
+              <div className="rounded-lg border border-[#C8D7E9] overflow-hidden p-4">
+                <div className="flex items-center justify-between rounded-lg bg-[#F2F5FA] px-4 py-3">
                   <div className="text-xs font-semibold text-[#0A3161]">
                     Saved Quotes ({quotes.length})
                   </div>
@@ -973,7 +973,7 @@ export default function ContentManagement() {
               </div>
             </div>
           ) : (
-            <div className="max-w-full overflow-hidden rounded-lg border border-[#C8D7E9] [&_.ck.ck-editor]:max-w-full [&_.ck-editor__main]:overflow-x-auto [&_.ck-editor__editable]:min-h-[360px] [&_.ck-editor__editable]:max-w-full [&_.ck-editor__editable]:p-4 [&_.ck-toolbar]:flex-wrap [&_.ck-toolbar]:border-t-0 [&_.ck-toolbar]:border-l-0 [&_.ck-toolbar]:border-r-0 [&_.ck-toolbar]:border-b [&_.ck-toolbar]:border-gray-200">
+            <div className="max-w-full overflow-hidden rounded-lg border border-[#C8D7E9] p-4 [&_.ck.ck-editor]:max-w-full [&_.ck-editor__main]:overflow-x-auto [&_.ck-editor__editable]:min-h-[360px] [&_.ck-editor__editable]:max-w-full [&_.ck-editor__editable]:px-5 [&_.ck-editor__editable]:py-4 [&_.ck-toolbar]:flex-wrap [&_.ck-toolbar]:border-t-0 [&_.ck-toolbar]:border-l-0 [&_.ck-toolbar]:border-r-0 [&_.ck-toolbar]:border-b [&_.ck-toolbar]:border-gray-200 [&_.ck-toolbar]:px-2 [&_.ck-toolbar]:py-2">
               {isLoading ? (
                 <CenteredLoader label="Loading content…" />
               ) : (

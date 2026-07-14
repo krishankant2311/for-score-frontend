@@ -2555,9 +2555,9 @@ export default function FitnessProgramEditorForm({
                                           v === "" ? "" : clampExerciseSets(v)
                                         );
                                       }}
-                                      className="h-10 w-full min-w-[5.5rem] border-[#C8D7E9] bg-white rounded-lg px-2 text-center text-sm tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                      className="h-10 w-full min-w-[5.5rem] border-[#C8D7E9] bg-white rounded-lg px-2 text-right text-sm tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                     />
-                                    <p className="min-h-[14px] text-center text-[10px] leading-none text-[#94a3b8]">
+                                    <p className="min-h-[14px] text-right text-[10px] leading-none text-[#94a3b8]">
                                       Max {MAX_EXERCISE_SETS}
                                     </p>
                                   </div>

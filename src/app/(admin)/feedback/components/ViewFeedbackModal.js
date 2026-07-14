@@ -72,7 +72,7 @@ export default function ViewFeedbackModal({ open, feedback, onClose }) {
                 ) : null}
               </span>
               <span className="inline-flex items-center rounded-full bg-white px-3 py-1 font-medium text-[#2158A3] border border-[#C8D7E9]">
-                Created: {feedback.createdAt}
+                Created At: {feedback.createdAt}
               </span>
             </div>
           </div>

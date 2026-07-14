@@ -12,11 +12,27 @@ import {
   FaCalendarAlt,
   FaCheckCircle,
   FaTimesCircle,
+  FaDumbbell,
 } from "react-icons/fa";
 
-export default function ViewUserModal({ open, user, onClose }) {
-  if (!open || !user) return null;
+function parseWorkoutPreferences(raw) {
+  if (raw == null || raw === "") return [];
+  if (Array.isArray(raw)) return raw.map(String).map((s) => s.trim()).filter(Boolean);
+  return String(raw)
+    .split(/[,;|]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
+function getSkillLevelBadgeClass(level) {
+  const key = String(level ?? "").toLowerCase();
+  if (key.includes("beginner")) return "bg-sky-50 text-sky-800 border-sky-200";
+  if (key.includes("intermediate")) return "bg-amber-50 text-amber-800 border-amber-200";
+  if (key.includes("advanced")) return "bg-rose-50 text-rose-800 border-rose-200";
+  return "bg-indigo-50 text-[#0A3161] border-indigo-200";
+}
+
+export default function ViewUserModal({ open, user, onClose }) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
   useEffect(() => {
@@ -28,7 +44,12 @@ export default function ViewUserModal({ open, user, onClose }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
 
+  if (!open || !user) return null;
   if (!isMounted) return null;
+
+  const workoutPreferences = Array.isArray(user.workoutPreferences)
+    ? user.workoutPreferences
+    : parseWorkoutPreferences(user.workoutPreferences ?? user.bodyType);
 
   return createPortal(
     <div
@@ -71,9 +92,8 @@ export default function ViewUserModal({ open, user, onClose }) {
             </div>
           </div>
 
-          {/* Grid: Email, Goal, Body Type */}
+          {/* Grid: Email, Goal, Skill Level */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Email */}
             <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
@@ -88,7 +108,6 @@ export default function ViewUserModal({ open, user, onClose }) {
               </p>
             </div>
 
-            {/* Goal */}
             <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
@@ -100,28 +119,62 @@ export default function ViewUserModal({ open, user, onClose }) {
               </div>
               <p className="mt-2">
                 <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-[#0A3161] border border-gray-200">
-                  {user.goal}
+                  {user.goal || "—"}
                 </span>
               </p>
             </div>
 
-            {/* Body Type */}
             <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
-                  <FaUserFriends className="h-4 w-4" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
+                  <FaDumbbell className="h-4 w-4" />
                 </div>
                 <label className="text-xs font-semibold text-[#5671A6] uppercase tracking-wide">
-                  Body Type
+                  Skill Level
                 </label>
               </div>
-              <p className="mt-2 text-sm font-medium text-[#0A3161]">{user.bodyType}</p>
+              <p className="mt-2">
+                {user.skillLevel ? (
+                  <span
+                    className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium border ${getSkillLevelBadgeClass(user.skillLevel)}`}
+                  >
+                    {user.skillLevel}
+                  </span>
+                ) : (
+                  <span className="text-sm font-medium text-[#0A3161]">—</span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Workout Preferences */}
+          <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
+                <FaUserFriends className="h-4 w-4" />
+              </div>
+              <label className="text-xs font-semibold text-[#5671A6] uppercase tracking-wide">
+                Workout Preferences
+              </label>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2 pr-2">
+              {workoutPreferences.length ? (
+                workoutPreferences.map((pref) => (
+                  <span
+                    key={pref}
+                    className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1.5 text-sm font-medium text-[#0A3161] border border-indigo-200"
+                  >
+                    {pref}
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm font-medium text-[#0A3161]">—</span>
+              )}
             </div>
           </div>
 
           {/* Grid: Weekly Days, Status, Join Date */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Weekly Days */}
             <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
@@ -131,10 +184,9 @@ export default function ViewUserModal({ open, user, onClose }) {
                   Weekly Workout Days
                 </label>
               </div>
-              <p className="mt-2 text-sm font-medium text-[#0A3161]">{user.weeklyDays}</p>
+              <p className="mt-2 text-sm font-medium text-[#0A3161]">{user.weeklyDays || "—"}</p>
             </div>
 
-            {/* Status */}
             <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-2">
                 <div
@@ -167,7 +219,6 @@ export default function ViewUserModal({ open, user, onClose }) {
               </p>
             </div>
 
-            {/* Join Date */}
             <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-700">
@@ -177,7 +228,7 @@ export default function ViewUserModal({ open, user, onClose }) {
                   Join Date
                 </label>
               </div>
-              <p className="mt-2 text-sm font-medium text-[#0A3161]">{user.joinDate}</p>
+              <p className="mt-2 text-sm font-medium text-[#0A3161]">{user.joinDate || "—"}</p>
             </div>
           </div>
         </div>
@@ -199,4 +250,3 @@ export default function ViewUserModal({ open, user, onClose }) {
     document.body
   );
 }
-

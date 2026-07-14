@@ -67,7 +67,7 @@ export default function ViewNotificationModal({ open, notification, onClose }) {
               >
                 {notification.status}
               </span>
-              {notification.scheduledAt && (
+              {notification.hasScheduledAt && (
                 <span className="inline-flex items-center rounded-full bg-white px-3 py-1 font-medium text-[#2158A3] border border-[#C8D7E9]">
                   Scheduled: {notification.scheduledAt}
                 </span>

@@ -17,7 +17,7 @@ import { HiOutlineTrash } from "react-icons/hi";
 import AdminHeaderCard from "@/components/admin/AdminHeaderCard";
 import ViewFeedbackModal from "./components/ViewFeedbackModal";
 import DeleteFeedbackModal from "./components/DeleteFeedbackModal";
-import { deleteFeedbackById, fetchAllFeedback, normalizeFeedbackStatusForApi, updateFeedbackStatusByAdmin } from "@/lib/feedbackApi";
+import { deleteFeedbackById, fetchAllFeedback, normalizeFeedbackStatusForApi, normalizeFeedbackType, updateFeedbackStatusByAdmin } from "@/lib/feedbackApi";
 
 const DEFAULT_ROWS_PER_PAGE = 10;
 
@@ -152,7 +152,7 @@ export default function FeedbackPage() {
   const filtered = useMemo(() => {
     const q = searchTerm.toLowerCase();
     return items.filter((i) => {
-      if (filterType && String(i.type ?? "") !== filterType) return false;
+      if (filterType && normalizeFeedbackType(i.type) !== normalizeFeedbackType(filterType)) return false;
       if (filterApiStatus) {
         const rowStatus = normalizeFeedbackStatusForApi(i.backendStatus ?? i.status);
         const wanted = normalizeFeedbackStatusForApi(filterApiStatus);

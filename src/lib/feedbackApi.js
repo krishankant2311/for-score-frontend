@@ -32,7 +32,21 @@ function assertOkPayload(payload, fallbackMessage) {
   return data;
 }
 
-/** Map UI / query status values to backend enum */
+/** Canonical feedback types */
+export const FEEDBACK_TYPES = ["General", "Bug", "Feature", "Suggestion"];
+
+export function normalizeFeedbackType(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const low = raw.toLowerCase().replace(/\s+/g, " ");
+  if (low === "general") return "General";
+  if (low === "bug") return "Bug";
+  if (low === "feature" || low === "feature request") return "Feature";
+  if (low === "suggestion" || low === "suggestions") return "Suggestion";
+  if (FEEDBACK_TYPES.includes(raw)) return raw;
+  return raw;
+}
+
 export function normalizeFeedbackStatusForApi(status) {
   const raw = String(status ?? "").trim();
   const low = raw.toLowerCase().replace(/\s+/g, "");
@@ -89,7 +103,7 @@ export function mapFeedbackFromApi(raw) {
     userEmail: raw.userEmail ?? raw.userId?.email ?? raw.user?.email ?? "",
     contactEmail: raw.contactEmail ?? "",
     rating: raw.rating ?? raw.stars ?? raw.score ?? "—",
-    type: raw.type ?? raw.feedbackType ?? raw.category ?? "",
+    type: normalizeFeedbackType(raw.type ?? raw.feedbackType ?? raw.category ?? ""),
     message: raw.message ?? raw.feedback ?? raw.text ?? raw.comment ?? "",
     status: ui.label,
     statusKey: ui.key,
@@ -138,7 +152,9 @@ export async function fetchAllFeedback({
   const base = String(baseUrl).replace(/\/$/, "");
   const headers = buildFeedbackAuthHeaders(token);
   const params = {};
-  if (type != null && String(type).trim() !== "") params.type = String(type).trim();
+  if (type != null && String(type).trim() !== "") {
+    params.type = normalizeFeedbackType(String(type).trim());
+  }
   if (status != null && String(status).trim() !== "") params.status = String(status).trim();
 
   const primaryPath = `/api/admin/get-all-feedback-byadmin`;

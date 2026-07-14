@@ -10,9 +10,18 @@ import {
   FaBullseye,
   FaUserFriends,
   FaCalendarAlt,
+  FaDumbbell,
 } from "react-icons/fa";
 import { TbActivityHeartbeat } from "react-icons/tb";
 import { HiClock } from "react-icons/hi";
+
+function getSkillLevelBadgeClass(level) {
+  const key = String(level ?? "").toLowerCase();
+  if (key.includes("beginner")) return "bg-sky-50 text-sky-800 border-sky-200";
+  if (key.includes("intermediate")) return "bg-amber-50 text-amber-800 border-amber-200";
+  if (key.includes("advanced")) return "bg-rose-50 text-rose-800 border-rose-200";
+  return "bg-indigo-50 text-[#0A3161] border-indigo-200";
+}
 
 export default function ViewActiveUserModal({ open, user, isLoading, onClose }) {
   if (!open || !user) return null;
@@ -112,7 +121,7 @@ export default function ViewActiveUserModal({ open, user, isLoading, onClose }) 
             </div>
           </div>
 
-          {/* Email, Goal, Body Type */}
+          {/* Email, Goal, Skill Level */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-2">
@@ -142,14 +151,50 @@ export default function ViewActiveUserModal({ open, user, isLoading, onClose }) 
             </div>
             <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
-                  <FaUserFriends className="h-4 w-4" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
+                  <FaDumbbell className="h-4 w-4" />
                 </div>
                 <label className="text-xs font-semibold text-[#5671A6] uppercase tracking-wide">
-                  Body Type
+                  Skill Level
                 </label>
               </div>
-              <p className="mt-2 text-sm font-medium text-[#0A3161]">{user.bodyType || "—"}</p>
+              <p className="mt-2">
+                {user.skillLevel ? (
+                  <span
+                    className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium border ${getSkillLevelBadgeClass(user.skillLevel)}`}
+                  >
+                    {user.skillLevel}
+                  </span>
+                ) : (
+                  <span className="text-sm font-medium text-[#0A3161]">—</span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Workout Preferences */}
+          <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
+                <FaUserFriends className="h-4 w-4" />
+              </div>
+              <label className="text-xs font-semibold text-[#5671A6] uppercase tracking-wide">
+                Workout Preferences
+              </label>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2 pr-2">
+              {Array.isArray(user.workoutPreferences) && user.workoutPreferences.length ? (
+                user.workoutPreferences.map((pref) => (
+                  <span
+                    key={pref}
+                    className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1.5 text-sm font-medium text-[#0A3161] border border-indigo-200"
+                  >
+                    {pref}
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm font-medium text-[#0A3161]">—</span>
+              )}
             </div>
           </div>
 

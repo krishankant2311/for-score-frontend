@@ -472,6 +472,11 @@ export default function Dashboard() {
     ];
 
   const topPrograms = normalizeArray(apiData?.topPrograms) ?? [];
+  const topProgramsBasis = apiData?.topProgramsBasis ?? "workout_completions";
+  const topProgramsSubtitle =
+    topProgramsBasis === "active_enrollments_fallback"
+      ? `${timeframeLabelMap[timeframe]} • Ranked by active enrollments (no completion data yet)`
+      : `${timeframeLabelMap[timeframe]} • Ranked by workout completions in this period`;
 
   // Users (monthly)
   const newUsersMonthlyData =
@@ -613,28 +618,40 @@ export default function Dashboard() {
         const donuts = payload?.donuts ?? {};
         const tables = payload?.tables ?? {};
         const recent = payload?.recentActivity ?? {};
+        const feed = normalizeArray(recent?.feed) ?? [];
 
-        const recentUsers = normalizeArray(recent?.users) ?? [];
-        const recentWorkouts = normalizeArray(recent?.workouts) ?? [];
-        const recentMeals = normalizeArray(recent?.meals) ?? [];
+        const recentActivityUnified = feed.length
+          ? feed.map((row) => ({
+              time: row?.createdAt
+                ? new Date(row.createdAt).toLocaleString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "",
+              event: row?.event ?? "Activity",
+              meta: row?.meta ?? "",
+            }))
+          : [
+              ...(normalizeArray(recent?.users) ?? []).map((u) => ({
+                time: u?.createdAt ? new Date(u.createdAt).toLocaleDateString() : "",
+                event: "New user registered",
+                meta: u?.email ?? u?.name ?? "",
+              })),
+              ...(normalizeArray(recent?.workouts) ?? []).map((w) => ({
+                time: w?.createdAt ? new Date(w.createdAt).toLocaleDateString() : "",
+                event: "Workout completed",
+                meta: w?.exerciseName ?? w?.title ?? "",
+              })),
+              ...(normalizeArray(recent?.meals) ?? []).map((m) => ({
+                time: m?.createdAt ? new Date(m.createdAt).toLocaleDateString() : "",
+                event: "Meal logged",
+                meta: m?.name ?? m?.title ?? "",
+              })),
+            ].slice(0, 5);
 
-        const recentActivityUnified = [
-          ...recentUsers.map((u) => ({
-            time: u?.createdAt ? new Date(u.createdAt).toLocaleDateString() : "",
-            event: "New user registered",
-            meta: u?.email ?? u?.name ?? "",
-          })),
-          ...recentWorkouts.map((w) => ({
-            time: w?.createdAt ? new Date(w.createdAt).toLocaleDateString() : "",
-            event: "Workout completed",
-            meta: w?.programName ?? w?.title ?? "",
-          })),
-          ...recentMeals.map((m) => ({
-            time: m?.createdAt ? new Date(m.createdAt).toLocaleDateString() : "",
-            event: "Meal logged",
-            meta: m?.name ?? m?.title ?? "",
-          })),
-        ].slice(0, 5);
+        const topProgramsBasis = tables.topProgramsBasis ?? "workout_completions";
 
         setApiData({
           cards: {
@@ -700,6 +717,7 @@ export default function Dashboard() {
             usersStatus: kvArrayToDoughnut(donuts.userStatus),
             // More useful than "Other:0" — show library categories if available
             exerciseTypes:
+              kvArrayToDoughnut(donuts.programsByLevel) ??
               kvArrayToDoughnut(donuts.exerciseLibraryCategories) ??
               kvArrayToDoughnut(donuts.exerciseTypesThisWeek),
             nutritionLogging:
@@ -712,6 +730,7 @@ export default function Dashboard() {
           },
           recentActivity: recentActivityUnified,
           topPrograms: normalizeArray(tables.topProgramsThisWeek) ?? [],
+          topProgramsBasis,
         });
         setHasLoadedData(true);
       } catch (e) {
@@ -985,6 +1004,9 @@ export default function Dashboard() {
                 title="Programs"
                 chartData={exerciseTypesData}
                 baseOptions={baseOptions}
+                centerValue={apiData?.cards?.totalPrograms ?? undefined}
+                centerLabel="programs"
+                subtitle="All programs by skill level"
               />
               <StatusDoughnut
                 title="Subscriptions"
@@ -1001,7 +1023,7 @@ export default function Dashboard() {
                       Top Programs
                     </h2>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {timeframeLabelMap[timeframe]} • Highest completions across users
+                      {topProgramsSubtitle}
                     </p>
                   </div>
                   <Link
@@ -1094,7 +1116,9 @@ export default function Dashboard() {
             <div className="surface-card flex min-h-[240px] flex-1 flex-col overflow-hidden">
               <div className="shrink-0 px-5 py-4 border-b border-border bg-gradient-to-r from-emerald-50 via-background to-amber-50/40 dark:from-emerald-950/35 dark:via-background dark:to-amber-950/15">
                 <h2 className="text-base font-semibold tracking-tight text-foreground">Recent Activity</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Latest events across modules.</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Sign-ups, workouts, meals, notifications, foods, programs, and FAQs.
+                </p>
               </div>
               <div className="flex min-h-0 flex-1 flex-col p-5">
                 <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -1119,10 +1143,10 @@ export default function Dashboard() {
                 </div>
                 <div className="mt-4 shrink-0">
                 <Link
-  href="/active-users-today"
+  href="/notification"
   className="w-full inline-block text-center rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-accent"
 >
-  View all activity
+  View notifications
 </Link>
                 </div>
               </div>

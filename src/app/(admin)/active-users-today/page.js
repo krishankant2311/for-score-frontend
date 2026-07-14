@@ -18,23 +18,47 @@ import AdminHeaderCard from "@/components/admin/AdminHeaderCard";
 
 const DEFAULT_ROWS_PER_PAGE = 6;
 
-function formatBodyType(u) {
-  const gender = String(u?.gender ?? "").trim();
-  if (gender && gender.toLowerCase() !== "null") {
-    return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
-  }
-  const skill = String(u?.workoutSkillLevel ?? "").trim();
-  if (skill) return skill;
-  const prefs = String(u?.workoutPreferences ?? "").trim();
-  if (prefs) return prefs.split(",")[0].trim();
-  return "—";
+function parseWorkoutPreferences(raw) {
+  if (raw == null || raw === "") return [];
+  if (Array.isArray(raw)) return raw.map(String).map((s) => s.trim()).filter(Boolean);
+  return String(raw)
+    .split(/[,;|]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function formatWorkoutSkillLevel(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  const key = s.toUpperCase();
+  if (key === "BEGINNER") return "Beginner";
+  if (key === "INTERMEDIATE") return "Intermediate";
+  if (key === "ADVANCED") return "Advanced";
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+function formatPreferenceLabel(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  if (/\s/.test(s)) return s;
+  return s
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function formatLastActive(u, sessionsToday) {
-  if (sessionsToday > 0) return "Online today";
   const updatedAt = u?.updatedAt ? new Date(u.updatedAt) : null;
+  const minsAgo =
+    updatedAt && !Number.isNaN(updatedAt.getTime())
+      ? (Date.now() - updatedAt.getTime()) / 60000
+      : null;
+
+  if (sessionsToday > 0) {
+    if (minsAgo != null && minsAgo < 30) return "Online now";
+    return "Online today";
+  }
   if (updatedAt && !Number.isNaN(updatedAt.getTime())) {
-    const minsAgo = (Date.now() - updatedAt.getTime()) / 60000;
     if (minsAgo < 30) return "Active now";
     return updatedAt.toLocaleString("en-IN", {
       day: "numeric",
@@ -80,7 +104,8 @@ function mapApiUserToRow(u) {
     lastSeen: formatLastActive(u, sessionsToday),
     lastActiveAt: formatLastActive(u, sessionsToday),
     sessionsToday,
-    bodyType: formatBodyType(u),
+    skillLevel: formatWorkoutSkillLevel(u?.workoutSkillLevel),
+    workoutPreferences: parseWorkoutPreferences(u?.workoutPreferences).map(formatPreferenceLabel),
     weeklyDays: formatWeeklyDays(u),
     joinDate: formatJoinDate(u),
     firstSeenToday:

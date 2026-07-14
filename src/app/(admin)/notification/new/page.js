@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
@@ -39,9 +39,11 @@ export default function NewNotificationPage() {
   const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [userPage, setUserPage] = useState(1);
-  const sendLockRef = useRef(false);
+  const [deliveryMode, setDeliveryMode] = useState("now"); // now | schedule | draft
+  const [scheduledAt, setScheduledAt] = useState("");
   const [isSending, setIsSending] = useState(false);
   const USERS_PER_PAGE = 8;
+  const userSelectionPanelRef = useRef(null);
 
   const [users, setUsers] = useState([]);
   const [isFetchingUsers, setIsFetchingUsers] = useState(false);
@@ -98,21 +100,28 @@ export default function NewNotificationPage() {
   };
 
   const handleSend = async () => {
-    if (sendLockRef.current || isSending) return;
-    sendLockRef.current = true;
+    if (isSending) return;
+
     if (!title.trim() || !message.trim()) {
       toast.error("Please fill in title and message", { id: "notify-required" });
-      window.setTimeout(() => {
-        sendLockRef.current = false;
-      }, 600);
       return;
     }
 
-    if (recipientMode === "custom" && selectedUserIds.length === 0) {
+    if (deliveryMode === "schedule" && !scheduledAt.trim()) {
+      toast.error("Please select a schedule date and time", { id: "notify-schedule-required" });
+      return;
+    }
+
+    if (deliveryMode === "schedule") {
+      const scheduleDate = new Date(scheduledAt);
+      if (Number.isNaN(scheduleDate.getTime()) || scheduleDate.getTime() <= Date.now()) {
+        toast.error("Schedule time must be in the future", { id: "notify-schedule-future" });
+        return;
+      }
+    }
+
+    if (recipientMode === "custom" && selectedUserIds.length === 0 && deliveryMode !== "draft") {
       toast.error("Please select at least one user for Custom Selection", { id: "notify-custom-required" });
-      window.setTimeout(() => {
-        sendLockRef.current = false;
-      }, 600);
       return;
     }
 
@@ -120,12 +129,10 @@ export default function NewNotificationPage() {
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
     if (!baseUrl) {
       toast.error("API base URL is missing (NEXT_PUBLIC_API_BASE_URL).", { id: "notify-send-baseurl" });
-      sendLockRef.current = false;
       return;
     }
     if (!token) {
       toast.error("Session expired. Please login again.", { id: "notify-send-token" });
-      sendLockRef.current = false;
       return;
     }
 
@@ -135,17 +142,21 @@ export default function NewNotificationPage() {
       sendToAll = true;
     } else if (recipientMode === "active") {
       userIds = activeUsers.map((u) => String(u.id));
-      if (!userIds.length) {
+      if (!userIds.length && deliveryMode !== "draft") {
         toast.error("No active users to notify.", { id: "notify-no-active" });
-        sendLockRef.current = false;
         return;
       }
     } else {
-      userIds = selectedUserIds.map((id) => String(id));
+      userIds = [...selectedUserIds].map((id) => String(id));
     }
 
     setIsSending(true);
     try {
+      const scheduleIso =
+        deliveryMode === "schedule" && scheduledAt
+          ? new Date(scheduledAt).toISOString()
+          : undefined;
+
       await sendAdminNotification({
         token,
         baseUrl,
@@ -153,9 +164,18 @@ export default function NewNotificationPage() {
         message: message.trim(),
         sendToAll,
         userIds,
+        deliveryMode,
+        scheduledAt: scheduleIso,
+        recipientMode,
+        type: "General",
       });
-      toast.success("Notification sent successfully!", { id: "notify-sent" });
-      sendLockRef.current = false;
+      const successMsg =
+        deliveryMode === "draft"
+          ? "Notification saved as draft!"
+          : deliveryMode === "schedule"
+            ? "Notification scheduled successfully!"
+            : "Notification sent successfully!";
+      toast.success(successMsg, { id: "notify-sent" });
       router.push("/notification");
     } catch (err) {
       console.error("Send notification failed:", err?.adminPayload || err?.message);
@@ -166,21 +186,30 @@ export default function NewNotificationPage() {
           "Failed to send notification.",
         { id: "notify-send-fail", duration: 8000 }
       );
-      sendLockRef.current = false;
     } finally {
       setIsSending(false);
     }
   };
 
-  useEffect(() => {
-    // Unlock send after navigation completes/unmount, but also
-    // ensure it doesn't stay locked if we stay on the page.
-    if (!sendLockRef.current) return;
-    const t = window.setTimeout(() => {
-      sendLockRef.current = false;
-    }, 1500);
-    return () => window.clearTimeout(t);
-  }, [title, message, recipientMode, selectedUserIds.length]);
+  const deliveryPillClasses = (active) =>
+    `flex-1 rounded-full border text-xs sm:text-sm font-medium py-2.5 px-3 text-center transition-all ${
+      active
+        ? "bg-[#0A3161] text-white border-[#0A3161] shadow-sm"
+        : "bg-white text-[#2158A3] border-[#C8D7E9] hover:bg-[#F2F5FA]"
+    }`;
+
+  const submitLabel =
+    deliveryMode === "draft"
+      ? "Save Draft"
+      : deliveryMode === "schedule"
+        ? "Schedule Notification"
+        : "Send Notification";
+
+  const minScheduleValue = useMemo(() => {
+    const d = new Date(Date.now() + 60_000);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }, []);
 
   const pillClasses = (active) =>
     `flex-1 rounded-full border text-xs sm:text-sm font-medium py-2.5 px-4 text-center transition-all ${
@@ -226,6 +255,14 @@ export default function NewNotificationPage() {
     // Reset to first page when search or mode changes for better UX.
     setUserPage(1);
   }, [userSearchTerm, recipientMode]);
+
+  const goToUserPage = (nextPage) => {
+    const clamped = Math.max(1, Math.min(nextPage, totalUserPages));
+    setUserPage(clamped);
+    requestAnimationFrame(() => {
+      userSelectionPanelRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+  };
 
   return (
     <div className="min-h-[80vh] py-8 px-1">
@@ -326,6 +363,59 @@ export default function NewNotificationPage() {
             </div>
           </div>
 
+          {/* Delivery mode */}
+          <div className="pt-4 border-t border-[#E0E7F5]">
+            <h2 className="text-sm font-semibold text-[#0A3161] mb-3">Delivery</h2>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <button
+                type="button"
+                className={deliveryPillClasses(deliveryMode === "now")}
+                onClick={() => setDeliveryMode("now")}
+              >
+                Send Now
+              </button>
+              <button
+                type="button"
+                className={deliveryPillClasses(deliveryMode === "schedule")}
+                onClick={() => setDeliveryMode("schedule")}
+              >
+                Schedule
+              </button>
+              <button
+                type="button"
+                className={deliveryPillClasses(deliveryMode === "draft")}
+                onClick={() => setDeliveryMode("draft")}
+              >
+                Save Draft
+              </button>
+            </div>
+            {deliveryMode === "schedule" ? (
+              <div className="mt-4">
+                <label className="text-xs font-medium text-[#2158A3]">
+                  Schedule date & time <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="datetime-local"
+                  className="mt-1.5 h-11 w-full rounded-lg border border-[#C8D7E9] bg-white px-3 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-[#0A3161]/30"
+                  value={scheduledAt}
+                  min={minScheduleValue}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                />
+                <p className="mt-2 text-xs text-[#5671A6]">
+                  Notification will be sent automatically at the selected time.
+                </p>
+              </div>
+            ) : deliveryMode === "draft" ? (
+              <p className="mt-3 text-xs text-[#5671A6] bg-[#F5F7FB] rounded-lg px-3 py-2">
+                Save without sending. You can review drafts from the Notifications list.
+              </p>
+            ) : (
+              <p className="mt-3 text-xs text-[#5671A6] bg-[#F5F7FB] rounded-lg px-3 py-2">
+                Notification will be sent immediately to selected recipients.
+              </p>
+            )}
+          </div>
+
           {/* Send button */}
           <div className="pt-1">
             <Button
@@ -334,13 +424,22 @@ export default function NewNotificationPage() {
               onClick={handleSend}
               disabled={isSending}
             >
-              {isSending ? "Sending…" : "Send Notification"}
+              {isSending
+                ? deliveryMode === "draft"
+                  ? "Saving…"
+                  : deliveryMode === "schedule"
+                    ? "Scheduling…"
+                    : "Sending…"
+                : submitLabel}
             </Button>
           </div>
         </div>
 
         {/* Right: User selection list */}
-        <div className="bg-white rounded-2xl border border-[#C8D7E9] shadow-md p-6 md:p-7 flex flex-col min-h-[320px]">
+        <div
+          ref={userSelectionPanelRef}
+          className="bg-white rounded-2xl border border-[#C8D7E9] shadow-md p-6 md:p-7 flex flex-col min-h-[320px] lg:sticky lg:top-6 lg:self-start"
+        >
           <div className="mb-4">
             <h2 className="text-sm font-semibold text-[#0A3161]">User Selection</h2>
             <p className="mt-2 text-xs text-[#5671A6] bg-[#F5F7FB] rounded-lg px-3 py-2">
@@ -430,7 +529,11 @@ export default function NewNotificationPage() {
           <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#E0E7F5] pt-3">
               <button
                 type="button"
-                onClick={() => setUserPage((p) => Math.max(1, p - 1))}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  goToUserPage(userPage - 1);
+                }}
                 disabled={userPage === 1 || totalUserPages <= 1}
                 className={`h-9 px-3 rounded-lg border text-sm font-medium transition-colors ${
                   userPage === 1 || totalUserPages <= 1
@@ -452,7 +555,11 @@ export default function NewNotificationPage() {
 
               <button
                 type="button"
-                onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  goToUserPage(userPage + 1);
+                }}
                 disabled={userPage === totalUserPages || totalUserPages <= 1}
                 className={`h-9 px-3 rounded-lg border text-sm font-medium transition-colors ${
                   userPage === totalUserPages || totalUserPages <= 1

@@ -33,6 +33,15 @@ import AdminHeaderCard from "@/components/admin/AdminHeaderCard";
 
 const DEFAULT_ROWS_PER_PAGE = 6;
 
+const LEVEL_FILTER_OPTIONS = [
+  { value: "all", label: "All Levels" },
+  { value: "Beginner", label: "Beginner" },
+  { value: "Intermediate", label: "Intermediate" },
+  { value: "Advanced", label: "Advanced" },
+  { value: "Beg / Int", label: "Beg / Int" },
+  { value: "Any", label: "Any" },
+];
+
 const getLevelBadgeClass = (level) => {
   const key = String(level ?? "").toLowerCase();
   if (key.includes("beginner")) return "border-sky-200 bg-sky-50 text-sky-800";
@@ -44,6 +53,7 @@ const getLevelBadgeClass = (level) => {
 export default function FitnessProgramsPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+  const [levelFilter, setLevelFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_ROWS_PER_PAGE);
   const [programs, setPrograms] = useState([]);
@@ -85,6 +95,9 @@ export default function FitnessProgramsPage() {
         if (q) {
           params.q = q;
           params.search = q;
+        }
+        if (levelFilter && levelFilter !== "all") {
+          params.level = levelFilter;
         }
 
         const res = await axios.get(joinAdminPath(baseUrl, "get-all-programs"), {
@@ -128,7 +141,7 @@ export default function FitnessProgramsPage() {
     };
 
     load();
-  }, [currentPage, rowsPerPage, debouncedSearchTerm, refreshKey]);
+  }, [currentPage, rowsPerPage, debouncedSearchTerm, levelFilter, refreshKey]);
 
   const totalItems = serverTotal || programs.length;
   const totalPages = Math.max(1, serverTotalPages || 1);
@@ -220,15 +233,32 @@ export default function FitnessProgramsPage() {
       />
 
       <div className="surface-card mt-6 p-4">
-        <Input
-          placeholder="Search by title, level, or tagline..."
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            setCurrentPage(1);
-          }}
-          className="w-full rounded-xl border-border bg-background"
-        />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Input
+            placeholder="Search by title, level, or tagline..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full rounded-xl border-border bg-background sm:flex-1"
+          />
+          <select
+            aria-label="Filter by level"
+            className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40 sm:w-48"
+            value={levelFilter}
+            onChange={(e) => {
+              setLevelFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            {LEVEL_FILTER_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="surface-card mt-6 max-h-[520px] w-full overflow-auto">

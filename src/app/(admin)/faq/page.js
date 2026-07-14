@@ -270,8 +270,8 @@ export default function FaqPage() {
                       {faq.question}
                     </div>
                   </TableCell>
-                  <TableCell className="max-w-[240px] px-4 py-3 align-middle text-sm font-normal text-[#2158A3] whitespace-normal">
-                    <div className="fs-line-clamp-3" title={stripHtmlToText(faq.answer)}>
+                  <TableCell className="max-w-[240px] px-4 py-3 align-middle font-medium text-[#0A3161] whitespace-normal">
+                    <div className="fs-line-clamp-3 text-sm font-normal text-[#2158A3]" title={stripHtmlToText(faq.answer)}>
                       {stripHtmlToText(faq.answer) || "—"}
                     </div>
                   </TableCell>

@@ -12,7 +12,28 @@ function formatDate(d) {
   try {
     const t = new Date(d).getTime();
     if (Number.isNaN(t)) return String(d);
-    return new Date(d).toISOString().slice(0, 10);
+    return new Date(d).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return String(d);
+  }
+}
+
+function formatDateTime(d) {
+  if (d == null || d === "") return "—";
+  try {
+    const t = new Date(d).getTime();
+    if (Number.isNaN(t)) return String(d);
+    return new Date(d).toLocaleString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   } catch {
     return String(d);
   }
@@ -34,10 +55,10 @@ function assertOkPayload(payload, fallbackMessage) {
 }
 
 function normalizeStatus(raw) {
-  const sr = String(raw ?? "sent").toLowerCase();
-  if (sr.includes("schedule")) return "Scheduled";
-  if (sr.includes("draft")) return "Draft";
-  if (sr.includes("pending")) return "Scheduled";
+  const s = String(raw ?? "Sent").trim();
+  if (s === "Draft") return "Draft";
+  if (s === "Scheduled") return "Scheduled";
+  if (s === "Failed") return "Failed";
   return "Sent";
 }
 
@@ -53,23 +74,41 @@ export function mapNotificationFromApi(raw) {
     : [];
 
   let recipientMode = "custom";
-  const aud = raw.recipientMode ?? raw.audience ?? raw.target;
-  if (typeof aud === "string") {
-    const a = aud.toLowerCase().replace(/\s/g, "");
-    if (a === "all" || a === "everyone" || a === "broadcast") recipientMode = "all";
-    else if (a === "active" || a === "activeusers") recipientMode = "active";
-    else if (a === "custom" || a === "selected") recipientMode = "custom";
-  }
-  if (sendToAll === true) {
-    recipientMode = "all";
-  } else if (ids.length > 0) {
-    recipientMode = "custom";
+  if (raw.recipientMode) {
+    const rm = String(raw.recipientMode).toLowerCase();
+    if (rm === "all" || rm === "active" || rm === "custom") recipientMode = rm;
   } else {
-    recipientMode = recipientMode === "all" ? "all" : "active";
+    const aud = raw.audience ?? raw.target;
+    if (typeof aud === "string") {
+      const a = aud.toLowerCase().replace(/\s/g, "");
+      if (a === "all" || a === "everyone" || a === "broadcast") recipientMode = "all";
+      else if (a === "active" || a === "activeusers") recipientMode = "active";
+      else if (a === "custom" || a === "selected" || a === "users") recipientMode = "custom";
+    }
+    if (sendToAll === true) {
+      recipientMode = "all";
+    } else if (ids.length > 0) {
+      recipientMode = "custom";
+    } else {
+      recipientMode = recipientMode === "all" ? "all" : "active";
+    }
   }
 
   const title = raw.title ?? raw.subject ?? "—";
   const message = raw.message ?? raw.body ?? raw.content ?? "";
+
+  const status = normalizeStatus(raw.status ?? raw.state);
+  const scheduledRaw =
+    raw.scheduledAt ?? raw.scheduled_at ?? raw.scheduleAt ?? raw.data?.scheduledAt;
+  const hasScheduledAt =
+    scheduledRaw != null &&
+    scheduledRaw !== "" &&
+    !Number.isNaN(new Date(scheduledRaw).getTime());
+  const scheduledAt = hasScheduledAt
+    ? formatDateTime(scheduledRaw)
+    : status === "Scheduled"
+      ? "Not set"
+      : "—";
 
   return {
     id: String(id),
@@ -78,9 +117,10 @@ export function mapNotificationFromApi(raw) {
     recipientMode,
     selectedUserIds: ids,
     type: raw.type ?? raw.category ?? "General",
-    status: normalizeStatus(raw.status ?? raw.state),
-    scheduledAt: formatDate(raw.scheduledAt ?? raw.scheduled_at ?? raw.scheduleAt),
-    createdAt: formatDate(raw.createdAt ?? raw.created_at ?? raw.date ?? raw.sentAt),
+    status,
+    hasScheduledAt,
+    scheduledAt,
+    createdAt: formatDateTime(raw.createdAt ?? raw.created_at ?? raw.date ?? raw.sentAt),
     _raw: raw,
   };
 }
@@ -110,31 +150,35 @@ export function extractNotificationPagination(payload, listLength, page, limit) 
     typeof total === "number" && Number.isFinite(total) && total >= 0 ? Math.floor(total) : null;
   const tp = result.totalPages;
   let totalPagesFromApi =
-    typeof tp === "number" && Number.isFinite(tp) && tp >= 1 ? Math.floor(tp) : null;
+    typeof tp === "number" && Number.isFinite(tp) && tp >= 0 ? Math.floor(tp) : null;
+
+  const statusCounts = result.statusCounts ?? null;
 
   if (totalFromApi != null) {
     const totalItems = totalFromApi;
     const totalPages =
-      totalPagesFromApi ?? Math.max(1, Math.ceil(totalItems / Math.max(1, limit)));
-    return { totalItems, totalPages };
+      totalPagesFromApi ?? (totalItems > 0 ? Math.max(1, Math.ceil(totalItems / Math.max(1, limit))) : 0);
+    return { totalItems, totalPages, statusCounts };
   }
 
   const base = (page - 1) * limit + listLength;
   if (listLength < limit) {
-    return { totalItems: base, totalPages: Math.max(1, page) };
+    return { totalItems: base, totalPages: base > 0 ? Math.max(1, page) : 0, statusCounts };
   }
-  return { totalItems: base + 1, totalPages: page + 1 };
+  return { totalItems: base + 1, totalPages: page + 1, statusCounts };
 }
 
 /**
- * GET — query: page, limit
+ * GET — query: page, limit, status (all|sent|scheduled|draft)
  */
-export async function fetchAllNotifications({ token, baseUrl, page = 1, limit = 10 } = {}) {
+export async function fetchAllNotifications({ token, baseUrl, page = 1, limit = 10, status = "" } = {}) {
   if (!token || !baseUrl) throw new Error("Missing token or API base URL");
   const url = joinAdminPath(baseUrl, "get-all-notifications");
+  const params = { page, limit };
+  if (status && status !== "all") params.status = status;
   const res = await axios.get(url, {
     headers: buildNotificationAuthHeaders(token),
-    params: { page, limit },
+    params,
     timeout: 30000,
   });
   assertOkPayload(res.data, "Failed to load notifications");
@@ -177,6 +221,10 @@ export async function sendAdminNotification({
   sendToAll,
   userIds,
   playerIds,
+  deliveryMode = "now",
+  scheduledAt,
+  type = "General",
+  recipientMode,
 } = {}) {
   if (!token || !baseUrl) throw new Error("Missing token or API base URL");
   const url = joinAdminPath(baseUrl, "send-notification");
@@ -184,15 +232,24 @@ export async function sendAdminNotification({
     title: String(title ?? "").trim(),
     message: String(message ?? "").trim(),
     sendToAll: Boolean(sendToAll),
+    deliveryMode: String(deliveryMode ?? "now").trim().toLowerCase(),
+    type: String(type ?? "General").trim() || "General",
   };
+  if (recipientMode) body.recipientMode = recipientMode;
+  if (body.deliveryMode === "schedule" && scheduledAt) {
+    body.scheduledAt = scheduledAt;
+  }
   if (!body.sendToAll && Array.isArray(userIds) && userIds.length) {
     body.userIds = userIds.map((id) => String(id));
   }
   if (!body.sendToAll && Array.isArray(playerIds) && playerIds.length) {
     body.playerIds = playerIds.map((id) => String(id));
   }
-  if (!body.sendToAll && !body.userIds?.length && !body.playerIds?.length) {
+  if (body.deliveryMode !== "draft" && !body.sendToAll && !body.userIds?.length && !body.playerIds?.length) {
     throw new Error("No recipients: set sendToAll or pass userIds / playerIds.");
+  }
+  if (body.deliveryMode === "schedule" && !body.scheduledAt) {
+    throw new Error("scheduledAt is required when scheduling a notification.");
   }
   try {
     const res = await axios.post(url, body, {

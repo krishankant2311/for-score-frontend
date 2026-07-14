@@ -115,17 +115,49 @@ export default function SettingsPage() {
 
   const showLoadingSkeleton = isLoadingSettings && !hasFetchedSettings;
 
-  const sanitizeContactPhone = (value) => value.replace(/[^\d+\s().-]/g, "");
+  const CONTACT_PHONE_MAX_DIGITS = 15;
+
+  const countPhoneDigits = (value) => String(value || "").replace(/\D/g, "").length;
+
+  const sanitizeContactPhone = (value) => {
+    const cleaned = String(value || "").replace(/[^\d+\s().-]/g, "");
+    let digits = 0;
+    let out = "";
+    for (const ch of cleaned) {
+      if (/\d/.test(ch)) {
+        if (digits >= CONTACT_PHONE_MAX_DIGITS) continue;
+        digits += 1;
+      }
+      out += ch;
+    }
+    return out;
+  };
 
   const handleContactPhoneChange = (value) => {
     setContactPhone(sanitizeContactPhone(value));
   };
 
   const handleSave = async () => {
+    const email = supportEmail.trim();
+    if (!email) {
+      toast.error("Support Email is required", { id: "settings-support-email-required" });
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Please enter a valid support email", { id: "settings-support-email-invalid" });
+      return;
+    }
+
     const phone = contactPhone.trim();
     if (phone && !/^[0-9+\s().-]+$/.test(phone)) {
       toast.error("Contact phone may only contain numbers and + ( ) - space", {
         id: "settings-contact-phone",
+      });
+      return;
+    }
+    if (phone && countPhoneDigits(phone) > CONTACT_PHONE_MAX_DIGITS) {
+      toast.error(`Contact phone cannot exceed ${CONTACT_PHONE_MAX_DIGITS} digits`, {
+        id: "settings-contact-phone-length",
       });
       return;
     }
@@ -379,7 +411,11 @@ export default function SettingsPage() {
                   value={contactPhone}
                   onChange={(e) => handleContactPhoneChange(e.target.value)}
                   placeholder="+1 555 123 4567"
+                  maxLength={20}
                 />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Up to {CONTACT_PHONE_MAX_DIGITS} digits (international format supported).
+                </p>
               </div>
             </div>
           </div>
