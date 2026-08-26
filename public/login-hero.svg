@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A3161"/>
+      <stop offset="55%" stop-color="#1A4B8C"/>
+      <stop offset="100%" stop-color="#0E2440"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F4C316"/>
+      <stop offset="100%" stop-color="#E5A800"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bg)"/>
+  <circle cx="620" cy="180" r="120" fill="#ffffff" opacity="0.06"/>
+  <circle cx="140" cy="820" r="160" fill="#ffffff" opacity="0.05"/>
+  <rect x="120" y="220" width="560" height="560" rx="32" fill="#ffffff" opacity="0.08"/>
+  <path d="M400 300 L520 420 L460 420 L460 620 L340 620 L340 420 L280 420 Z" fill="url(#accent)" opacity="0.95"/>
+  <rect x="250" y="680" width="300" height="18" rx="9" fill="#ffffff" opacity="0.25"/>
+  <rect x="290" y="720" width="220" height="14" rx="7" fill="#ffffff" opacity="0.18"/>
+  <text x="400" y="860" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700">FOUR SCORE</text>
+  <text x="400" y="910" text-anchor="middle" fill="#F4C316" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="600">Admin Panel</text>
+</svg>

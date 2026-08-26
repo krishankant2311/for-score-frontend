@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export default function AuthLayout({ children }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-primary bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,oklch(0.55_0.14_230/0.35),transparent_55%),radial-gradient(ellipse_70%_50%_at_100%_50%,oklch(0.4_0.1_255/0.4),transparent)] px-4 py-8">
@@ -7,12 +9,15 @@ export default function AuthLayout({ children }) {
           {children}
         </div>
 
-        {/* Right section - Image (narrower) */}
+        {/* Right section - Image (narrower). Use public/login-hero.svg or add public/login.png */}
         <div className="relative w-full md:w-[50%] min-h-[300px] md:min-h-0">
-          <img
-            src="/login.png"
+          <Image
+            src="/login-hero.svg"
             alt=""
-            className="absolute inset-0 w-full h-full object-cover object-center rounded-b-[24px] md:rounded-b-none md:rounded-r-[24px]"
+            fill
+            priority
+            unoptimized
+            className="object-cover object-center rounded-b-[24px] md:rounded-b-none md:rounded-r-[24px]"
           />
         </div>
       </div>
