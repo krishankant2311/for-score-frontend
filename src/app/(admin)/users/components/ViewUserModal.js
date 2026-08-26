@@ -13,7 +13,10 @@ import {
   FaCheckCircle,
   FaTimesCircle,
   FaDumbbell,
+  FaRulerVertical,
+  FaWeight,
 } from "react-icons/fa";
+import { MdCake } from "react-icons/md";
 
 function parseWorkoutPreferences(raw) {
   if (raw == null || raw === "") return [];
@@ -32,9 +35,22 @@ function getSkillLevelBadgeClass(level) {
   return "bg-indigo-50 text-[#0A3161] border-indigo-200";
 }
 
+function getStatusBadgeClass(status) {
+  if (status === "Active") return "bg-green-100 text-green-800 border-green-200";
+  if (status === "Blocked") return "bg-red-100 text-red-800 border-red-200";
+  if (status === "Pending") return "bg-amber-100 text-amber-900 border-amber-200";
+  return "bg-slate-100 text-slate-800 border-slate-200";
+}
+
 export default function ViewUserModal({ open, user, onClose }) {
   const [isMounted, setIsMounted] = useState(false);
+  const [photoFailed, setPhotoFailed] = useState(false);
+
   useEffect(() => setIsMounted(true), []);
+  useEffect(() => {
+    setPhotoFailed(false);
+  }, [user?.id, user?.profilePhotoUrl]);
+
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e) => {
@@ -50,6 +66,9 @@ export default function ViewUserModal({ open, user, onClose }) {
   const workoutPreferences = Array.isArray(user.workoutPreferences)
     ? user.workoutPreferences
     : parseWorkoutPreferences(user.workoutPreferences ?? user.bodyType);
+
+  const photoUrl = String(user.profilePhotoUrl || "").trim();
+  const showPhoto = Boolean(photoUrl) && !photoFailed;
 
   return createPortal(
     <div
@@ -75,20 +94,70 @@ export default function ViewUserModal({ open, user, onClose }) {
 
         {/* Content */}
         <div className="p-6 space-y-5">
-          {/* Name */}
+          {/* Name + profile photo */}
           <div className="bg-gradient-to-br from-[#F2F5FA] to-white rounded-xl border border-[#C8D7E9] p-5 shadow-sm">
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#0A3161]/10 text-[#0A3161] flex-shrink-0">
-                <FaUser className="h-6 w-6" />
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl bg-[#0A3161]/10 text-[#0A3161] flex-shrink-0 border border-[#C8D7E9]">
+                {showPhoto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={photoUrl}
+                    alt={user.name || "Profile"}
+                    className="h-full w-full object-cover"
+                    onError={() => setPhotoFailed(true)}
+                  />
+                ) : (
+                  <FaUser className="h-7 w-7" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <label className="text-xs font-semibold text-[#5671A6] uppercase tracking-wide">
                   Name
                 </label>
                 <p className="mt-2 text-lg font-semibold text-[#0A3161] break-words">
-                  {user.name}
+                  {user.name || "—"}
                 </p>
+                {!showPhoto ? (
+                  <p className="mt-1 text-xs text-[#5671A6]">No profile picture</p>
+                ) : null}
               </div>
+            </div>
+          </div>
+
+          {/* Age / Height / Weight */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 text-orange-700">
+                  <MdCake className="h-4 w-4" />
+                </div>
+                <label className="text-xs font-semibold text-[#5671A6] uppercase tracking-wide">
+                  Age
+                </label>
+              </div>
+              <p className="mt-1 text-sm font-medium text-[#0A3161]">{user.age || "—"}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-100 text-teal-700">
+                  <FaRulerVertical className="h-4 w-4" />
+                </div>
+                <label className="text-xs font-semibold text-[#5671A6] uppercase tracking-wide">
+                  Height
+                </label>
+              </div>
+              <p className="mt-1 text-sm font-medium text-[#0A3161]">{user.height || "—"}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-fuchsia-100 text-fuchsia-700">
+                  <FaWeight className="h-4 w-4" />
+                </div>
+                <label className="text-xs font-semibold text-[#5671A6] uppercase tracking-wide">
+                  Weight
+                </label>
+              </div>
+              <p className="mt-1 text-sm font-medium text-[#0A3161]">{user.weight || "—"}</p>
             </div>
           </div>
 
@@ -193,7 +262,9 @@ export default function ViewUserModal({ open, user, onClose }) {
                   className={`flex h-8 w-8 items-center justify-center rounded-lg ${
                     user.status === "Active"
                       ? "bg-green-100 text-green-700"
-                      : "bg-red-100 text-red-700"
+                      : user.status === "Pending"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-red-100 text-red-700"
                   }`}
                 >
                   {user.status === "Active" ? (
@@ -208,11 +279,7 @@ export default function ViewUserModal({ open, user, onClose }) {
               </div>
               <p className="mt-2">
                 <span
-                  className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium border ${
-                    user.status === "Active"
-                      ? "bg-green-100 text-green-800 border-green-200"
-                      : "bg-red-100 text-red-800 border-red-200"
-                  }`}
+                  className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium border ${getStatusBadgeClass(user.status)}`}
                 >
                   {user.status}
                 </span>

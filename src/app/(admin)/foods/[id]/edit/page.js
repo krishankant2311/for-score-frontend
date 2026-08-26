@@ -43,6 +43,11 @@ export default function EditFoodPage() {
       if (!token) return;
       try {
         const f = await fetchFoodById(id, { token });
+        if (f?.createdByUserId) {
+          toast.error("Admin cannot edit foods added by users");
+          router.push("/foods");
+          return;
+        }
         setName(f.name || "");
         setServingSize(f.servingSize || "");
         setCategory(f.category || "Other");

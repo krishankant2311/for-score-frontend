@@ -41,13 +41,13 @@ export async function fetchStretchPrograms({ token, search = "", status = "activ
     wrapAxiosError(err, "Failed to fetch stretch programs");
   }
 }
-export async function fetchAllStretchPrograms({ token, search = "" } = {}) {
+export async function fetchAllStretchPrograms({ token, search = "", status = "all" } = {}) {
   const all = [];
   let page = 1;
   let totalPages = 1;
 
   do {
-    const result = await fetchStretchPrograms({ token, search, page, limit: 100 });
+    const result = await fetchStretchPrograms({ token, search, status, page, limit: 100 });
     all.push(...(result.items ?? []));
     totalPages = result.totalPages ?? 1;
     page += 1;

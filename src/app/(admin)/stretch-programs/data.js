@@ -1,3 +1,6 @@
+export const MAX_STRETCH_DURATION_MINUTES = 999;
+export const MAX_STRETCH_MOVEMENT_TIME_MINUTES = 999;
+
 export const STRETCH_LEVELS = [
   { value: "All Levels", label: "All Levels" },
   { value: "Beginner", label: "Beginner" },
@@ -192,7 +195,7 @@ export function mapProgramToFormState(program) {
         sequenceLabel: m.sequenceLabel ?? "",
         movementName: m.movementName ?? "",
         targetArea: m.targetArea ?? "",
-        timeLabel: m.timeLabel ?? "",
+        timeLabel: String(m.timeLabel ?? "").match(/\d+/)?.[0] ?? "",
       }))
     : [{ ...EMPTY_MOVEMENT }];
 

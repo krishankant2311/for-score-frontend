@@ -6,7 +6,7 @@ import { toast } from "react-hot-toast";
 import { HiOutlineArrowLeft } from "react-icons/hi";
 import { FaRegHeart } from "react-icons/fa";
 import StretchProgramForm from "../../components/StretchProgramForm";
-import { mapProgramToFormState } from "../../data";
+import { MAX_STRETCH_DURATION_MINUTES, MAX_STRETCH_MOVEMENT_TIME_MINUTES, mapProgramToFormState } from "../../data";
 import { buildStretchProgramPayload, fetchStretchProgramById, updateStretchProgram } from "@/lib/stretchProgramApi";
 
 export default function EditStretchProgramPage() {
@@ -40,18 +40,46 @@ export default function EditStretchProgramPage() {
   const handleSave = async () => {
     if (isSaving) return;
     const payload = buildStretchProgramPayload(form);
-    if (!payload.title || !payload.intro || !payload.description || !payload.durationMinutes) {
-      toast.error("Title, short description, intro, and duration are required");
+    const durationRaw = String(form.durationMinutes ?? "").trim();
+    const duration = Number(durationRaw);
+
+    if (!payload.title || !payload.intro || !payload.description) {
+      toast.error("Title, short description, and intro are required", { id: "stretch-edit-required" });
+      return;
+    }
+    if (!durationRaw) {
+      toast.error("Duration is required", { id: "stretch-edit-duration-required" });
+      return;
+    }
+    if (!/^\d+$/.test(durationRaw) || duration < 1) {
+      toast.error("Duration must be a valid number of minutes", { id: "stretch-edit-duration-invalid" });
+      return;
+    }
+    if (duration > MAX_STRETCH_DURATION_MINUTES) {
+      toast.error(`Duration cannot exceed ${MAX_STRETCH_DURATION_MINUTES} minutes`, {
+        id: "stretch-edit-duration-max",
+      });
       return;
     }
     if (!payload.movements.length) {
-      toast.error("Add at least one movement");
+      toast.error("Add at least one movement", { id: "stretch-edit-movement" });
+      return;
+    }
+    const invalidMovementTime = payload.movements.find((m) => {
+      const raw = String(m.timeLabel ?? "").trim();
+      const minutes = Number(raw);
+      return !/^\d+$/.test(raw) || minutes < 1 || minutes > MAX_STRETCH_MOVEMENT_TIME_MINUTES;
+    });
+    if (invalidMovementTime) {
+      toast.error(`Movement time must be numeric and between 1-${MAX_STRETCH_MOVEMENT_TIME_MINUTES} minutes`, {
+        id: "stretch-edit-movement-time-invalid",
+      });
       return;
     }
 
     const token = localStorage.getItem("token");
     if (!token) {
-      toast.error("Please login again");
+      toast.error("Please login again", { id: "stretch-edit-token" });
       return;
     }
 

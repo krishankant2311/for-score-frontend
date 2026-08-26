@@ -128,7 +128,7 @@ function getUserStatusBadgeClass(status) {
 
 export default function UserManagementPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all"); // 'all' | 'active' | 'blocked'
+  const [statusFilter, setStatusFilter] = useState("all"); // 'all' | 'active' | 'blocked' | 'pending'
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [users, setUsers] = useState([]);
@@ -137,7 +137,7 @@ export default function UserManagementPage() {
   const [totalUsers, setTotalUsers] = useState(0);
   const [serverTotalPages, setServerTotalPages] = useState(1);
   /** DB-wide counts from GET /get-user-stats (not current page length) */
-  const [userStats, setUserStats] = useState({ total: 0, active: 0, blocked: 0 });
+  const [userStats, setUserStats] = useState({ total: 0, active: 0, blocked: 0, pending: 0 });
   const [statsRefreshKey, setStatsRefreshKey] = useState(0);
   const [usersRefreshKey, setUsersRefreshKey] = useState(0);
   const [isBlockingUser, setIsBlockingUser] = useState(false);
@@ -192,6 +192,7 @@ export default function UserManagementPage() {
           total: Number(r.total) || 0,
           active: Number(r.active) || 0,
           blocked: Number(r.blocked) || 0,
+          pending: Number(r.pending) || 0,
         });
       } catch (err) {
         console.error("Fetch user stats failed:", err?.response?.data || err?.message);
@@ -227,6 +228,7 @@ export default function UserManagementPage() {
 
         if (statusFilter === "active") params.status = "Active";
         if (statusFilter === "blocked") params.status = "Blocked";
+        if (statusFilter === "pending") params.status = "Pending";
 
         const url = joinAdminPath(baseUrl, "get-all-users");
         const res = await axios.get(url, {
@@ -237,6 +239,7 @@ export default function UserManagementPage() {
         const payload = res?.data ?? {};
         const rawUsers = extractUsersArray(payload);
         const { total: serverTotal, totalPages: serverPages } = extractListMeta(payload, rowsPerPage);
+        const apiOrigin = String(baseUrl).replace(/\/$/, "");
 
         // Map backend user shape into the fields expected by this UI.
         const mappedUsers = rawUsers.map((u) => {
@@ -244,10 +247,30 @@ export default function UserManagementPage() {
             ? new Date(u.createdAt).toISOString().slice(0, 10)
             : "";
 
+          const photoRaw = u?.profilePhoto ?? u?.profile_photo ?? u?.photo ?? "";
+          let profilePhotoUrl = "";
+          if (photoRaw) {
+            const raw = String(photoRaw).trim().replace(/\\/g, "/");
+            if (/^https?:\/\//i.test(raw)) profilePhotoUrl = raw;
+            else if (raw.includes("/uploads/")) {
+              profilePhotoUrl = `${apiOrigin}${raw.slice(raw.toLowerCase().lastIndexOf("/uploads/"))}`;
+            } else if (raw.startsWith("uploads/")) {
+              profilePhotoUrl = `${apiOrigin}/${raw}`;
+            } else if (!raw.includes("/")) {
+              profilePhotoUrl = `${apiOrigin}/uploads/${raw}`;
+            } else {
+              profilePhotoUrl = raw.startsWith("/") ? `${apiOrigin}${raw}` : `${apiOrigin}/${raw}`;
+            }
+          }
+
           return {
             id: u?._id ?? u?.id ?? u?.userId,
             name: u?.name ?? "",
             email: u?.email ?? "",
+            age: u?.age != null && u?.age !== "" ? String(u.age) : "",
+            height: u?.height != null && u?.height !== "" ? String(u.height) : "",
+            weight: u?.weight != null && u?.weight !== "" ? String(u.weight) : "",
+            profilePhotoUrl,
             goal: u?.fitnessTarget ?? u?.goalDuration ?? "",
             skillLevel: formatWorkoutSkillLevel(u?.workoutSkillLevel),
             workoutPreferences: parseWorkoutPreferences(u?.workoutPreferences).map(formatPreferenceLabel),
@@ -341,6 +364,9 @@ export default function UserManagementPage() {
             <span className="mx-2 text-muted-foreground/60">|</span>
             Blocked:{" "}
             <span className="font-semibold text-rose-700 dark:text-rose-300">{userStats.blocked}</span>
+            <span className="mx-2 text-muted-foreground/60">|</span>
+            Pending:{" "}
+            <span className="font-semibold text-amber-700 dark:text-amber-300">{userStats.pending}</span>
           </p>
         }
       />
@@ -359,12 +385,13 @@ export default function UserManagementPage() {
           />
         </div>
 
-        {/* Filter tabs: All Users | Active | Blocked */}
-        <div className="mt-4 flex gap-2">
+        {/* Filter tabs: All Users | Active | Blocked | Pending */}
+        <div className="mt-4 flex gap-2 flex-wrap">
           {[
-              { key: "all", label: `All Users (${userStats.total})` },
+            { key: "all", label: `All Users (${userStats.total})` },
             { key: "active", label: `Active (${userStats.active})` },
             { key: "blocked", label: `Blocked (${userStats.blocked})` },
+            { key: "pending", label: `Pending (${userStats.pending})` },
           ].map(({ key, label }) => (
             <button
               key={key}
@@ -390,7 +417,7 @@ export default function UserManagementPage() {
         <Table unwrap className="min-w-[1320px] w-full table-fixed">
           <TableHeader className="sticky top-0 z-10 bg-[#F2F5FA]">
             <TableRow className="border-b bg-[#F2F5FA]">
-              <TableHead className="w-[12%] px-4 py-3 align-middle font-semibold text-[#2158A3]">NAME</TableHead>
+              <TableHead className="sticky left-0 z-20 w-[12%] min-w-[170px] bg-[#F2F5FA] px-4 py-3 align-middle font-semibold text-[#2158A3] shadow-[6px_0_10px_-10px_rgba(10,49,97,0.45)]">NAME</TableHead>
               <TableHead className="w-[16%] px-4 py-3 align-middle font-semibold text-[#2158A3]">EMAIL</TableHead>
               <TableHead className="w-[10%] px-4 py-3 align-middle font-semibold text-[#2158A3]">GOAL</TableHead>
               <TableHead className="w-[9%] px-4 py-3 align-middle font-semibold text-[#2158A3]">SKILL LEVEL</TableHead>
@@ -398,7 +425,7 @@ export default function UserManagementPage() {
               <TableHead className="w-[9%] px-4 py-3 align-middle font-semibold text-[#2158A3]">WEEKLY DAYS</TableHead>
               <TableHead className="w-[8%] px-4 py-3 align-middle font-semibold text-[#2158A3]">STATUS</TableHead>
               <TableHead className="w-[9%] px-4 py-3 align-middle font-semibold text-[#2158A3]">JOIN DATE</TableHead>
-              <TableHead className="w-[10%] px-4 py-3 align-middle text-right font-semibold text-[#2158A3]">ACTIONS</TableHead>
+              <TableHead className="sticky right-0 z-20 w-[10%] min-w-[120px] bg-[#F2F5FA] px-4 py-3 align-middle text-right font-semibold text-[#2158A3] shadow-[-6px_0_10px_-10px_rgba(10,49,97,0.45)]">ACTIONS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="bg-white">
@@ -414,7 +441,7 @@ export default function UserManagementPage() {
                   key={user.id != null && user.id !== "" ? String(user.id) : `user-row-${idx}-${user.email || ""}`}
                   className={idx % 2 === 1 ? "bg-gray-50/50" : ""}
                 >
-                  <TableCell className="px-4 py-3 align-middle whitespace-normal">
+                  <TableCell className={`sticky left-0 z-10 px-4 py-3 align-middle whitespace-normal shadow-[6px_0_10px_-10px_rgba(10,49,97,0.35)] ${idx % 2 === 1 ? "bg-gray-50" : "bg-white"}`}>
                     <p className="break-words font-medium leading-snug text-[#0A3161]" title={user.name}>
                       {user.name || "—"}
                     </p>
@@ -425,7 +452,7 @@ export default function UserManagementPage() {
                     </p>
                   </TableCell>
                   <TableCell className="px-4 py-3 align-middle whitespace-normal">
-                    <span className="inline-flex max-w-full items-center whitespace-normal break-words rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-medium text-[#0A3161]">
+                    <span className="inline-flex w-full min-w-0 max-w-full items-center whitespace-normal break-all rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-medium leading-snug text-[#0A3161]">
                       {user.goal || "—"}
                     </span>
                   </TableCell>
@@ -469,7 +496,7 @@ export default function UserManagementPage() {
                   <TableCell className="px-4 py-3 align-middle whitespace-nowrap text-sm font-normal text-[#2158A3]">
                     {user.joinDate || "—"}
                   </TableCell>
-                  <TableCell className="px-4 py-3 align-middle">
+                  <TableCell className={`sticky right-0 z-10 px-4 py-3 align-middle shadow-[-6px_0_10px_-10px_rgba(10,49,97,0.35)] ${idx % 2 === 1 ? "bg-gray-50" : "bg-white"}`}>
                     <div className="flex items-center justify-end gap-2">
                       <button
                         type="button"

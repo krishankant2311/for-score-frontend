@@ -3,8 +3,16 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "react-hot-toast";
 import { HiOutlineTrash, HiPlus } from "react-icons/hi";
-import { STRETCH_LEVELS, STRETCH_STATUSES, STRETCH_PROGRAM_TEMPLATES, EMPTY_MOVEMENT } from "../data";
+import {
+  STRETCH_LEVELS,
+  STRETCH_STATUSES,
+  STRETCH_PROGRAM_TEMPLATES,
+  EMPTY_MOVEMENT,
+  MAX_STRETCH_DURATION_MINUTES,
+  MAX_STRETCH_MOVEMENT_TIME_MINUTES,
+} from "../data";
 
 export default function StretchProgramForm({
   form,
@@ -15,6 +23,32 @@ export default function StretchProgramForm({
   showTemplates = false,
 }) {
   const updateField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+
+  const updateNumericField = (field, value, max, toastId) => {
+    const digits = String(value ?? "").replace(/[^\d]/g, "");
+    if (String(value ?? "") !== digits) {
+      toast.error("Only numeric values are allowed", { id: toastId });
+    }
+    if (digits && Number(digits) > max) {
+      toast.error(`Maximum allowed value is ${max}`, { id: `${toastId}-max` });
+      return;
+    }
+    updateField(field, digits);
+  };
+
+  const updateMovementTime = (index, value) => {
+    const digits = String(value ?? "").replace(/[^\d]/g, "");
+    if (String(value ?? "") !== digits) {
+      toast.error("Movement time must be numeric", { id: "stretch-movement-time-numeric" });
+    }
+    if (digits && Number(digits) > MAX_STRETCH_MOVEMENT_TIME_MINUTES) {
+      toast.error(`Movement time cannot exceed ${MAX_STRETCH_MOVEMENT_TIME_MINUTES} minutes`, {
+        id: "stretch-movement-time-max",
+      });
+      return;
+    }
+    updateMovement(index, "timeLabel", digits);
+  };
 
   const updateMovement = (index, field, value) => {
     setForm((prev) => {
@@ -57,7 +91,10 @@ export default function StretchProgramForm({
       level: template.level,
       status: "Active",
       sortOrder: "0",
-      movements: template.movements.map((m) => ({ ...m })),
+      movements: template.movements.map((m) => ({
+        ...m,
+        timeLabel: String(m.timeLabel ?? "").match(/\d+/)?.[0] ?? "",
+      })),
     });
   };
 
@@ -94,21 +131,30 @@ export default function StretchProgramForm({
         </div>
         <div>
           <label className="text-sm font-medium text-[#0A3161]">Category</label>
-          <Input
-            className="mt-1.5 h-12"
+          <Textarea
+            className="mt-1.5 min-h-12 resize-y whitespace-pre-wrap break-words"
             value={form.category}
             onChange={(e) => updateField("category", e.target.value)}
             placeholder="Recover"
+            rows={2}
           />
         </div>
         <div>
           <label className="text-sm font-medium text-[#0A3161]">Duration (minutes) *</label>
           <Input
             className="mt-1.5 h-12"
-            type="number"
-            min={1}
+            type="text"
+            inputMode="numeric"
             value={form.durationMinutes}
-            onChange={(e) => updateField("durationMinutes", e.target.value.replace(/[^\d]/g, ""))}
+            onChange={(e) =>
+              updateNumericField(
+                "durationMinutes",
+                e.target.value,
+                MAX_STRETCH_DURATION_MINUTES,
+                "stretch-duration-numeric"
+              )
+            }
+            placeholder="20"
           />
         </div>
         <div>
@@ -187,7 +233,7 @@ export default function StretchProgramForm({
                 <th className="px-3 py-3 min-w-[120px]">Sequence</th>
                 <th className="px-3 py-3 min-w-[220px]">Movement</th>
                 <th className="px-3 py-3 min-w-[180px]">Target area</th>
-                <th className="px-3 py-3 min-w-[140px]">Time</th>
+                <th className="px-3 py-3 min-w-[140px]">Time (minutes)</th>
                 <th className="px-3 py-3 w-14" />
               </tr>
             </thead>
@@ -228,9 +274,10 @@ export default function StretchProgramForm({
                   <td className="px-3 py-3">
                     <Input
                       className="h-10"
+                      inputMode="numeric"
                       value={m.timeLabel}
-                      onChange={(e) => updateMovement(index, "timeLabel", e.target.value)}
-                      placeholder="3 minutes"
+                      onChange={(e) => updateMovementTime(index, e.target.value)}
+                      placeholder="3"
                     />
                   </td>
                   <td className="px-3 py-3">

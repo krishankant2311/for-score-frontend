@@ -43,6 +43,7 @@ function mapFoodRow(f) {
     fats: f.fats ?? 0,
     image: f.image || "",
     status: f.status || "Active",
+    createdByUserId: f.createdByUserId ? String(f.createdByUserId) : "",
     createdAt: f.createdAt ? new Date(f.createdAt).toISOString().slice(0, 10) : "",
   };
 }
@@ -239,14 +240,23 @@ export default function FoodsPage() {
                   <TableCell>{f.createdAt}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => router.push(`/foods/${f.id}/edit`)}
-                        className="rounded-lg border border-[#C8D7E9] p-2 hover:bg-[#F2F5FA]"
-                        aria-label="Edit"
-                      >
-                        <FaRegEdit />
-                      </button>
+                      {f.createdByUserId ? (
+                        <span
+                          className="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800"
+                          title="User-added food cannot be edited by admin"
+                        >
+                          User food
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/foods/${f.id}/edit`)}
+                          className="rounded-lg border border-[#C8D7E9] p-2 hover:bg-[#F2F5FA]"
+                          aria-label="Edit"
+                        >
+                          <FaRegEdit />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(f)}

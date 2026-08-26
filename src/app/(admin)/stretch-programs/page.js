@@ -18,6 +18,7 @@ import {
 import AdminHeaderCard from "@/components/admin/AdminHeaderCard";
 import AdminPagination from "@/components/admin/AdminPagination";
 import { deleteStretchProgram, fetchAllStretchPrograms } from "@/lib/stretchProgramApi";
+import { STRETCH_LEVELS, STRETCH_STATUSES } from "./data";
 import ViewStretchProgramModal from "./components/ViewStretchProgramModal";
 
 const DEFAULT_ROWS_PER_PAGE = 6;
@@ -25,6 +26,8 @@ const DEFAULT_ROWS_PER_PAGE = 6;
 export default function StretchProgramsPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+  const [levelFilter, setLevelFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [items, setItems] = useState([]);
   const [isFetching, setIsFetching] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -44,7 +47,7 @@ export default function StretchProgramsPage() {
       }
       setIsFetching(true);
       try {
-        const list = await fetchAllStretchPrograms({ token });
+        const list = await fetchAllStretchPrograms({ token, status: "all" });
         setItems(list);
       } catch (err) {
         toast.error(err?.message || "Failed to load stretch programs");
@@ -58,13 +61,16 @@ export default function StretchProgramsPage() {
 
   const filtered = useMemo(() => {
     const q = searchTerm.toLowerCase();
-    return items.filter(
-      (i) =>
+    return items.filter((i) => {
+      const matchesSearch =
         (i.title || "").toLowerCase().includes(q) ||
         (i.intro || i.description || "").toLowerCase().includes(q) ||
-        (i.category || "").toLowerCase().includes(q)
-    );
-  }, [items, searchTerm]);
+        (i.category || "").toLowerCase().includes(q);
+      const matchesLevel = levelFilter === "All" || (i.level || "All Levels") === levelFilter;
+      const matchesStatus = statusFilter === "All" || (i.status || "Active") === statusFilter;
+      return matchesSearch && matchesLevel && matchesStatus;
+    });
+  }, [items, searchTerm, levelFilter, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
   const start = (currentPage - 1) * rowsPerPage;
@@ -111,7 +117,7 @@ export default function StretchProgramsPage() {
         }
       />
 
-      <div className="mt-6">
+      <div className="mt-6 grid gap-3 md:grid-cols-[1fr_220px_220px]">
         <Input
           placeholder="Search by title, category, or intro…"
           value={searchTerm}
@@ -121,6 +127,36 @@ export default function StretchProgramsPage() {
           }}
           className="h-12 rounded-xl border-[#C8D7E9]"
         />
+        <select
+          className="h-12 rounded-xl border border-[#C8D7E9] bg-white px-3 text-sm text-[#0A3161]"
+          value={levelFilter}
+          onChange={(e) => {
+            setLevelFilter(e.target.value);
+            setCurrentPage(1);
+          }}
+        >
+          <option value="All">All</option>
+          {STRETCH_LEVELS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <select
+          className="h-12 rounded-xl border border-[#C8D7E9] bg-white px-3 text-sm text-[#0A3161]"
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setCurrentPage(1);
+          }}
+        >
+          <option value="All">All</option>
+          {STRETCH_STATUSES.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="mt-6 overflow-x-auto rounded-2xl border border-[#C8D7E9] bg-white shadow-md">
@@ -226,7 +262,9 @@ export default function StretchProgramsPage() {
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6">
             <h3 className="font-semibold text-[#0A3161]">Delete stretch program?</h3>
-            <p className="mt-2 text-sm text-muted-foreground">{deleteTarget.title}</p>
+            <p className="mt-2 line-clamp-3 break-words text-sm text-muted-foreground" title={deleteTarget.title}>
+              {deleteTarget.title}
+            </p>
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
                 Cancel
