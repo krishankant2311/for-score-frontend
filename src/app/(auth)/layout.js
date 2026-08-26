@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { getLoginImageSrc } from "@/lib/basePath";
 
 export default function AuthLayout({ children }) {
   return (
@@ -9,15 +9,12 @@ export default function AuthLayout({ children }) {
           {children}
         </div>
 
-        {/* Right section - Image (narrower). Use public/login-hero.svg or add public/login.png */}
+        {/* Right section - login.png (public/ or NEXT_PUBLIC_STATIC_ORIGIN on server) */}
         <div className="relative w-full md:w-[50%] min-h-[300px] md:min-h-0">
-          <Image
-            src="/login-hero.svg"
+          <img
+            src={getLoginImageSrc()}
             alt=""
-            fill
-            priority
-            unoptimized
-            className="object-cover object-center rounded-b-[24px] md:rounded-b-none md:rounded-r-[24px]"
+            className="absolute inset-0 h-full w-full object-cover object-center rounded-b-[24px] md:rounded-b-none md:rounded-r-[24px]"
           />
         </div>
       </div>
