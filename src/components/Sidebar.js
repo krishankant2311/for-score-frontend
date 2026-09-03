@@ -11,10 +11,10 @@ import { HiOutlineCog, HiOutlineCreditCard } from "react-icons/hi";
 import { PiLayoutLight } from "react-icons/pi";
 import { HiOutlineClipboardList } from "react-icons/hi";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { getLogoSrc } from "@/lib/basePath";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -126,12 +126,12 @@ export default function Sidebar() {
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-sidebar bg-gradient-to-b from-sidebar via-sidebar to-[oklch(0.22_0.09_255)] text-sidebar-foreground">
       {/* Logo */}
       <div className="flex shrink-0 flex-col items-center gap-2 border-b border-sidebar-border/80 px-4 py-1 pt-4 text-center">
-        <Image
-          src="/logo.png"
-          alt="Medi Admin Logo"
+        <img
+          src={getLogoSrc()}
+          alt="4 Score Fitness"
           width={150}
           height={60}
-          className="h-20 w-auto rounded-2xl object-contain p-1 "
+          className="h-20 w-auto rounded-2xl object-contain p-1"
         />
         <div>
           <h1 className="text-lg font-bold tracking-tight">4 Score Fitness</h1>

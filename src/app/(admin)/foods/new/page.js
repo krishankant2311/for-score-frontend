@@ -14,6 +14,7 @@ import {
   isInRange,
   MACRO_LIMITS,
   normalizeNumberInput,
+  normalizeDecimalInput,
 } from "@/lib/formValidation";
 
 export default function NewFoodPage() {
@@ -75,7 +76,7 @@ export default function NewFoodPage() {
     setIsSaving(true);
     try {
       await createFood(fd, { token });
-      toast.success("Food added");
+      toast.success("Food added", { id: "food-add-success" });
       router.push("/foods");
     } catch (err) {
       toast.error(err?.adminPayload?.message || err?.message || "Failed to save");
@@ -128,11 +129,11 @@ export default function NewFoodPage() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ["Calories *", calories, setCalories, MACRO_LIMITS.calories],
-            ["Protein (g)", protein, setProtein, MACRO_LIMITS.grams],
-            ["Carbs (g)", carbs, setCarbs, MACRO_LIMITS.grams],
-            ["Fat (g)", fats, setFats, MACRO_LIMITS.grams],
-          ].map(([label, val, setVal, limits]) => (
+            ["Calories *", calories, setCalories, MACRO_LIMITS.calories, normalizeNumberInput],
+            ["Protein (g)", protein, setProtein, MACRO_LIMITS.grams, normalizeDecimalInput],
+            ["Carbs (g)", carbs, setCarbs, MACRO_LIMITS.grams, normalizeDecimalInput],
+            ["Fat (g)", fats, setFats, MACRO_LIMITS.grams, normalizeDecimalInput],
+          ].map(([label, val, setVal, limits, normalize]) => (
             <div key={label}>
               <label className="text-sm font-medium text-[#0A3161]">{label}</label>
               <Input
@@ -140,7 +141,7 @@ export default function NewFoodPage() {
                 value={val}
                 min={limits.min}
                 max={limits.max}
-                onChange={(e) => setVal(normalizeNumberInput(e.target.value, limits))}
+                onChange={(e) => setVal(normalize(e.target.value, limits))}
                 inputMode="decimal"
               />
             </div>

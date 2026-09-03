@@ -6,15 +6,26 @@ export function withBasePath(path = '') {
 }
 
 /**
+ * Public folder asset URL — respects basePath and optional static origin (nginx :80 vs Next :3001).
+ */
+export function getPublicAssetSrc(assetPath = '/') {
+  const normalized = assetPath.startsWith('/') ? assetPath : `/${assetPath}`;
+  const path = withBasePath(normalized);
+  const origin = String(process.env.NEXT_PUBLIC_STATIC_ORIGIN || '')
+    .trim()
+    .replace(/\/$/, '');
+  if (origin) return `${origin}${path}`;
+  return path;
+}
+
+/**
  * Login hero image — on GoDaddy/IP deploy static files may live on port 80
  * while Next.js runs on :3001. Set NEXT_PUBLIC_STATIC_ORIGIN=http://72.167.43.139
  */
 export function getLoginImageSrc() {
-  const origin = String(process.env.NEXT_PUBLIC_STATIC_ORIGIN || '')
-    .trim()
-    .replace(/\/$/, '');
-  if (origin) {
-    return `${origin}${withBasePath('/login.png')}`;
-  }
-  return withBasePath('/login.png');
+  return getPublicAssetSrc('/login.png');
+}
+
+export function getLogoSrc() {
+  return getPublicAssetSrc('/logo.png');
 }

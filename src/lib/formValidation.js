@@ -16,10 +16,11 @@ export function validateFoodName(name) {
 }
 
 export const MACRO_LIMITS = {
-  calories: { min: 0, max: 9999, label: "Calories" },
-  grams: { min: 0, max: 999, label: "grams" },
+  calories: { min: 0, max: 9999, label: "Calories", decimals: 0 },
+  grams: { min: 0, max: 999, label: "grams", decimals: 2 },
 };
 
+/** Integer fields (calories). */
 export function normalizeNumberInput(raw, { min, max }) {
   const s = String(raw ?? "");
   if (s === "") return "";
@@ -28,6 +29,26 @@ export function normalizeNumberInput(raw, { min, max }) {
   const n = Number(digits);
   if (Number.isNaN(n)) return "";
   return String(Math.min(max, Math.max(min, n)));
+}
+
+/** Protein / carbs / fat — allows up to 2 decimal places. */
+export function normalizeDecimalInput(raw, { min, max, decimals = 2 } = {}) {
+  let s = String(raw ?? "").replace(/[^\d.]/g, "");
+  if (s === "") return "";
+  const firstDot = s.indexOf(".");
+  if (firstDot !== -1) {
+    s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
+  }
+  if (firstDot !== -1) {
+    const [whole, frac = ""] = s.split(".");
+    s = `${whole}.${frac.slice(0, decimals)}`;
+  }
+  if (s === ".") return "0.";
+  const n = Number(s);
+  if (Number.isNaN(n)) return "";
+  if (!s.endsWith(".") && n > max) return String(max);
+  if (!s.endsWith(".") && n < min) return String(min);
+  return s;
 }
 
 export function isInRange(value, { min, max }) {
