@@ -103,6 +103,42 @@ function formatPreferenceLabel(raw) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function formatGoalDurationForDisplay(raw) {
+  if (raw == null || raw === "") return "";
+  const s = String(raw).toLowerCase().trim();
+  const short = /^(\d+)w$/.exec(s);
+  if (short) return `${short[1]} weeks`;
+  const long = /^(\d+)\s*weeks?$/i.exec(String(raw).trim());
+  if (long) return `${long[1]} weeks`;
+  return String(raw).trim();
+}
+
+function formatWeeklyGoalForDisplay(raw) {
+  if (raw == null || raw === "") return "";
+  const key = String(raw).toLowerCase().trim().replace(/\s+/g, "_");
+  const labels = {
+    lose_1: "Lose 1 lb/week",
+    lose_0_5: "Lose 0.5 lb/week",
+    maintain: "Maintain weight",
+    gain_0_5: "Gain 0.5 lb/week",
+    gain_1: "Gain 1 lb/week",
+  };
+  if (labels[key]) return labels[key];
+  const human = String(raw).trim();
+  if (/lose|gain|maintain/i.test(human)) return human;
+  return "";
+}
+
+function resolveUserGoalLabel(u) {
+  const duration = formatGoalDurationForDisplay(u?.goalDuration);
+  const weekly = formatWeeklyGoalForDisplay(u?.weeklyWeightGoal);
+  const target = String(u?.fitnessTarget ?? "").trim();
+  if (duration && weekly) return `${weekly} · ${duration}`;
+  if (duration) return duration;
+  if (weekly) return weekly;
+  return target;
+}
+
 function getSkillLevelBadgeClass(level) {
   const key = String(level ?? "").toLowerCase();
   if (key.includes("beginner")) return "border-sky-200 bg-sky-50 text-sky-800";
@@ -271,7 +307,9 @@ export default function UserManagementPage() {
             height: u?.height != null && u?.height !== "" ? String(u.height) : "",
             weight: u?.weight != null && u?.weight !== "" ? String(u.weight) : "",
             profilePhotoUrl,
-            goal: u?.fitnessTarget ?? u?.goalDuration ?? "",
+            goal: resolveUserGoalLabel(u),
+            goalDuration: formatGoalDurationForDisplay(u?.goalDuration),
+            weeklyGoal: formatWeeklyGoalForDisplay(u?.weeklyWeightGoal),
             skillLevel: formatWorkoutSkillLevel(u?.workoutSkillLevel),
             workoutPreferences: parseWorkoutPreferences(u?.workoutPreferences).map(formatPreferenceLabel),
             weeklyDays:

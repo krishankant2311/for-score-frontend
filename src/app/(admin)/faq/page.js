@@ -94,9 +94,11 @@ export default function FaqPage() {
   const filteredFaqs = useMemo(() => {
     const q = searchTerm.toLowerCase();
     let list = faqs.filter((f) => {
+      const answerText = stripHtmlToText(f.answer).toLowerCase();
       return (
         f.question.toLowerCase().includes(q) ||
-        (f.category || "").toLowerCase().includes(q)
+        (f.category || "").toLowerCase().includes(q) ||
+        answerText.includes(q)
       );
     });
     if (statusFilter === "active") list = list.filter((f) => f.status === "Active");
@@ -185,7 +187,7 @@ export default function FaqPage() {
 
       <div className="p-4 mt-6 bg-white rounded-lg border border-[#C8D7E9] shadow-md">
         <Input
-          placeholder="Search by question or category..."
+          placeholder="Search by question or answer..."
           value={searchTerm}
           onChange={(e) => {
             setSearchTerm(e.target.value);

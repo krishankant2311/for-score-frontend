@@ -60,7 +60,22 @@ function ResetPasswordForm() {
       formData.append("newPassword", newPassword);
       formData.append("confirmPassword", confirmPassword);
 
-      const res = await axios.post(apiUrl("/api/user/reset-password"), formData);
+      let res;
+      try {
+        res = await axios.post(apiUrl("/api/admin/reset-password"), formData);
+      } catch (adminErr) {
+        // Fallback to user endpoint if token belongs to mobile user
+        const msg = adminErr?.response?.data?.message || "";
+        if (
+          adminErr?.response?.status === 404 ||
+          msg.toLowerCase().includes("invalid reset token") ||
+          msg.toLowerCase().includes("token expired")
+        ) {
+          res = await axios.post(apiUrl("/api/user/reset-password"), formData);
+        } else {
+          throw adminErr;
+        }
+      }
 
       if (res?.data?.success) {
         toast.success(res.data.message || "Password reset successfully!");
@@ -81,7 +96,7 @@ function ResetPasswordForm() {
         <h1 className="mb-2 text-2xl font-bold text-gray-900">Invalid reset link</h1>
         <p className="mb-6 text-sm text-gray-500">
           This password reset link is missing or invalid. Open the latest email from Four Score or
-          request a new reset link from the app.
+          request a new reset link.
         </p>
       </div>
     );
@@ -92,8 +107,7 @@ function ResetPasswordForm() {
       <div>
         <h1 className="mb-2 text-2xl font-bold text-gray-900">Password updated</h1>
         <p className="mb-6 text-sm text-gray-500">
-          Your password has been changed successfully. You can now sign in with your new password in
-          the Four Score app.
+          Your password has been changed successfully. You can now sign in with your new password.
         </p>
         <button
           type="button"

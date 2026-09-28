@@ -68,7 +68,7 @@ export function mapNotificationFromApi(raw) {
   if (id == null || id === "") return null;
 
   const sendToAll = raw.sendToAll ?? raw.send_to_all;
-  const playerIds = raw.playerIds ?? raw.player_ids ?? raw.userIds ?? raw.recipientIds ?? [];
+  const playerIds = raw.userIds ?? raw.recipientIds ?? raw.playerIds ?? raw.player_ids ?? [];
   const ids = Array.isArray(playerIds)
     ? [...new Set(playerIds.map((x) => String(x).trim()).filter(Boolean))]
     : [];
@@ -171,11 +171,19 @@ export function extractNotificationPagination(payload, listLength, page, limit) 
 /**
  * GET — query: page, limit, status (all|sent|scheduled|draft)
  */
-export async function fetchAllNotifications({ token, baseUrl, page = 1, limit = 10, status = "" } = {}) {
+export async function fetchAllNotifications({
+  token,
+  baseUrl,
+  page = 1,
+  limit = 10,
+  status = "",
+  search = "",
+} = {}) {
   if (!token || !baseUrl) throw new Error("Missing token or API base URL");
   const url = joinAdminPath(baseUrl, "get-all-notifications");
   const params = { page, limit };
   if (status && status !== "all") params.status = status;
+  if (search && String(search).trim()) params.search = String(search).trim();
   const res = await axios.get(url, {
     headers: buildNotificationAuthHeaders(token),
     params,
@@ -186,6 +194,24 @@ export async function fetchAllNotifications({ token, baseUrl, page = 1, limit = 
   const mapped = rows.map(mapNotificationFromApi).filter(Boolean);
   const meta = extractNotificationPagination(res.data, mapped.length, page, limit);
   return { list: mapped, ...meta, raw: res.data };
+}
+
+/**
+ * GET — single notification by id (admin)
+ */
+export async function fetchNotificationById({ token, baseUrl, id } = {}) {
+  if (!token || !baseUrl || !id) throw new Error("Missing token, API base URL, or notification id");
+  const encId = encodeURIComponent(String(id));
+  const url = joinAdminPath(baseUrl, `get-notification-byadmin/${encId}`);
+  const res = await axios.get(url, {
+    headers: buildNotificationAuthHeaders(token),
+    timeout: 30000,
+  });
+  assertOkPayload(res.data, "Failed to load notification");
+  const raw = res.data?.result ?? res.data?.data ?? res.data;
+  const mapped = mapNotificationFromApi(raw);
+  if (!mapped) throw new Error("Notification not found");
+  return mapped;
 }
 
 function toAdminApiError(err, fallbackMessage) {
@@ -245,11 +271,19 @@ export async function sendAdminNotification({
   if (!body.sendToAll && Array.isArray(playerIds) && playerIds.length) {
     body.playerIds = playerIds.map((id) => String(id));
   }
-  if (body.deliveryMode !== "draft" && !body.sendToAll && !body.userIds?.length && !body.playerIds?.length) {
-    throw new Error("No recipients: set sendToAll or pass userIds / playerIds.");
-  }
   if (body.deliveryMode === "schedule" && !body.scheduledAt) {
     throw new Error("scheduledAt is required when scheduling a notification.");
+  }
+  if (
+    recipientMode === "custom" &&
+    !body.sendToAll &&
+    !body.userIds?.length &&
+    !body.playerIds?.length
+  ) {
+    throw new Error("Please select at least one user for Custom Selection");
+  }
+  if (body.deliveryMode !== "draft" && !body.sendToAll && !body.userIds?.length && !body.playerIds?.length) {
+    throw new Error("No recipients: set sendToAll or pass userIds / playerIds.");
   }
   try {
     const res = await axios.post(url, body, {
@@ -265,6 +299,74 @@ export async function sendAdminNotification({
     if (err?.adminPayload) throw err;
     if (err?.response?.data !== undefined) {
       throw toAdminApiError(err, "Failed to send notification");
+    }
+    throw err;
+  }
+}
+
+/**
+ * POST — update/publish an existing draft notification
+ */
+export async function updateAdminNotification({
+  token,
+  baseUrl,
+  notificationId,
+  title,
+  message,
+  sendToAll,
+  userIds,
+  playerIds,
+  deliveryMode = "draft",
+  scheduledAt,
+  type = "General",
+  recipientMode,
+} = {}) {
+  if (!token || !baseUrl || !notificationId) {
+    throw new Error("Missing token, API base URL, or notification id");
+  }
+  const url = joinAdminPath(baseUrl, `update-notification-byadmin/${encodeURIComponent(String(notificationId))}`);
+  const body = {
+    title: String(title ?? "").trim(),
+    message: String(message ?? "").trim(),
+    sendToAll: Boolean(sendToAll),
+    deliveryMode: String(deliveryMode ?? "draft").trim().toLowerCase(),
+    type: String(type ?? "General").trim() || "General",
+  };
+  if (recipientMode) body.recipientMode = recipientMode;
+  if (body.deliveryMode === "schedule" && scheduledAt) {
+    body.scheduledAt = scheduledAt;
+  }
+  if (!body.sendToAll && Array.isArray(userIds) && userIds.length) {
+    body.userIds = userIds.map((id) => String(id));
+  }
+  if (!body.sendToAll && Array.isArray(playerIds) && playerIds.length) {
+    body.playerIds = playerIds.map((id) => String(id));
+  }
+  if (
+    recipientMode === "custom" &&
+    !body.sendToAll &&
+    !body.userIds?.length &&
+    !body.playerIds?.length
+  ) {
+    throw new Error("Please select at least one user for Custom Selection");
+  }
+  if (body.deliveryMode === "schedule" && !body.scheduledAt) {
+    throw new Error("scheduledAt is required when scheduling a notification.");
+  }
+  try {
+    const res = await axios.post(url, body, {
+      headers: {
+        ...buildNotificationAuthHeaders(token),
+        "Content-Type": "application/json",
+      },
+      timeout: 60000,
+    });
+    assertOkPayload(res.data, "Failed to update notification");
+    return res.data;
+  } catch (err) {
+    if (err?.adminPayload) throw err;
+    if (err?.response?.data !== undefined) {
+      throw toAdminApiError(err, "Failed to update notification");
     }
     throw err;
   }

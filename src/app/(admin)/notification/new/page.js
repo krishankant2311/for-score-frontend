@@ -92,10 +92,18 @@ export default function NewNotificationPage() {
       ? activeUsers.length
       : selectedUserIds.length;
 
+  const selectedIdSet = useMemo(
+    () => new Set(selectedUserIds.map((id) => String(id))),
+    [selectedUserIds]
+  );
+
   const handleToggleUser = (id) => {
     if (recipientMode !== "custom") return;
+    const sid = String(id);
     setSelectedUserIds((prev) =>
-      prev.includes(id) ? prev.filter((uid) => uid !== id) : [...prev, id]
+      prev.some((uid) => String(uid) === sid)
+        ? prev.filter((uid) => String(uid) !== sid)
+        : [...prev, sid]
     );
   };
 
@@ -120,7 +128,7 @@ export default function NewNotificationPage() {
       }
     }
 
-    if (recipientMode === "custom" && selectedUserIds.length === 0 && deliveryMode !== "draft") {
+    if (recipientMode === "custom" && selectedUserIds.length === 0) {
       toast.error("Please select at least one user for Custom Selection", { id: "notify-custom-required" });
       return;
     }
@@ -479,7 +487,7 @@ export default function NewNotificationPage() {
               paginatedVisibleUsers.map((user) => {
               const isSelected =
                 recipientMode === "custom"
-                  ? selectedUserIds.includes(user.id)
+                  ? selectedIdSet.has(String(user.id))
                   : recipientMode === "all"
                   ? true
                   : user.status === "Active";

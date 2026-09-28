@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FaRegEye } from "react-icons/fa";
+import { FaRegEye, FaRegEdit } from "react-icons/fa";
 import { getAudienceLabel } from "./data";
 import ViewNotificationModal from "./components/ViewNotificationModal";
 import AdminHeaderCard from "@/components/admin/AdminHeaderCard";
@@ -56,6 +56,8 @@ export default function NotificationPage() {
   const [serverTotalPages, setServerTotalPages] = useState(0);
   const [statusCounts, setStatusCounts] = useState({ all: 0, sent: 0, scheduled: 0, draft: 0 });
 
+  const showScheduledColumn = statusFilter !== "draft";
+
   useEffect(() => {
     const load = async () => {
       const token = localStorage.getItem("token");
@@ -74,12 +76,14 @@ export default function NotificationPage() {
       }
       setIsLoading(true);
       try {
+        const isSearching = Boolean(searchTerm.trim());
         const res = await fetchAllNotifications({
           token,
           baseUrl,
-          page: currentPage,
-          limit: rowsPerPage,
+          page: isSearching ? 1 : currentPage,
+          limit: isSearching ? 100 : rowsPerPage,
           status: statusFilter,
+          search: isSearching ? searchTerm.trim() : "",
         });
         setNotifications(Array.isArray(res.list) ? res.list : []);
         setServerTotalItems(res.totalItems ?? 0);
@@ -105,32 +109,21 @@ export default function NotificationPage() {
       }
     };
     load();
-  }, [currentPage, rowsPerPage, statusFilter]);
+  }, [currentPage, rowsPerPage, statusFilter, searchTerm]);
 
-  const filteredNotifications = useMemo(() => {
-    const q = searchTerm.toLowerCase();
-    return notifications.filter((n) => {
-      const audienceLabel = getAudienceLabel(n.recipientMode, n.selectedUserIds);
-      return (
-        n.title.toLowerCase().includes(q) ||
-        n.message?.toLowerCase().includes(q) ||
-        audienceLabel.toLowerCase().includes(q) ||
-        (n.type || "").toLowerCase().includes(q)
-      );
-    });
-  }, [notifications, searchTerm]);
+  const tableColSpan = showScheduledColumn ? 8 : 7;
 
-  const totalItems = searchTerm.trim() ? filteredNotifications.length : serverTotalItems;
+  const totalItems = serverTotalItems;
   const sentCount = statusCounts.sent;
   const scheduledCount = statusCounts.scheduled;
   const draftCount = statusCounts.draft;
 
   const totalPages = searchTerm.trim()
-    ? Math.max(0, Math.ceil(filteredNotifications.length / rowsPerPage))
+    ? Math.max(1, Math.ceil(totalItems / rowsPerPage))
     : serverTotalPages;
   const paginatedItems = searchTerm.trim()
-    ? filteredNotifications.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
-    : filteredNotifications;
+    ? notifications.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+    : notifications;
   const showPagination = totalItems > 0 && totalPages > 1;
   const displayLo = totalItems === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
   const displayHi = totalItems === 0 ? 0 : Math.min(currentPage * rowsPerPage, totalItems);
@@ -176,7 +169,7 @@ export default function NotificationPage() {
 
       <div className="p-4 mt-6 bg-white rounded-lg border border-[#C8D7E9] shadow-md">
         <Input
-          placeholder="Search this page by title, message, audience, or type…"
+          placeholder="Search by title, message, audience, or type…"
           value={searchTerm}
           onChange={(e) => {
             setSearchTerm(e.target.value);
@@ -211,28 +204,30 @@ export default function NotificationPage() {
       </div>
 
       <div className="mt-6 w-full max-h-[500px] overflow-auto border border-[#C8D7E9] rounded-lg shadow-md">
-        <Table unwrap className="min-w-[1200px] w-full table-fixed">
+        <Table unwrap className="min-w-[1200px] w-full">
           <TableHeader className="sticky top-0 z-10 bg-[#F2F5FA]">
             <TableRow className="border-b bg-[#F2F5FA]">
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">TITLE</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">MESSAGE</TableHead>
-              <TableHead className="w-[10%] px-4 py-3 font-semibold text-[#2158A3]">AUDIENCE</TableHead>
-              <TableHead className="w-[8%] px-4 py-3 font-semibold text-[#2158A3]">TYPE</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">STATUS</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">
-                <span className="block">SCHEDULED AT</span>
-                <span className="mt-0.5 block text-[10px] font-normal normal-case text-[#5671A6]">
-                  For scheduled notifications
-                </span>
-              </TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">CREATED AT</TableHead>
-              <TableHead className="font-semibold text-[#2158A3] px-4 py-3">ACTIONS</TableHead>
+              <TableHead className="min-w-[180px] font-semibold text-[#2158A3] px-4 py-3">TITLE</TableHead>
+              <TableHead className="min-w-[200px] font-semibold text-[#2158A3] px-4 py-3">MESSAGE</TableHead>
+              <TableHead className="min-w-[180px] px-4 py-3 font-semibold text-[#2158A3]">AUDIENCE</TableHead>
+              <TableHead className="min-w-[110px] px-4 py-3 font-semibold text-[#2158A3]">TYPE</TableHead>
+              <TableHead className="min-w-[100px] font-semibold text-[#2158A3] px-4 py-3">STATUS</TableHead>
+              {showScheduledColumn ? (
+                <TableHead className="min-w-[150px] font-semibold text-[#2158A3] px-4 py-3">
+                  <span className="block">SCHEDULED AT</span>
+                  <span className="mt-0.5 block text-[10px] font-normal normal-case text-[#5671A6]">
+                    For scheduled notifications
+                  </span>
+                </TableHead>
+              ) : null}
+              <TableHead className="min-w-[130px] font-semibold text-[#2158A3] px-4 py-3">CREATED AT</TableHead>
+              <TableHead className="min-w-[100px] font-semibold text-[#2158A3] px-4 py-3">ACTIONS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="bg-white">
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-[#2158A3] py-12">
+                <TableCell colSpan={tableColSpan} className="text-center text-[#2158A3] py-12">
                   <span className="inline-flex items-center gap-2 text-sm font-medium">
                     <span className="h-4 w-4 rounded-full border-2 border-[#0A3161]/30 border-t-[#0A3161] animate-spin" />
                     Loading notifications…
@@ -257,22 +252,24 @@ export default function NotificationPage() {
                         {item.message || "—"}
                       </p>
                     </TableCell>
-                    <TableCell className="px-4 py-3 align-middle whitespace-nowrap">
+                    <TableCell className="min-w-[180px] px-4 py-3 align-middle">
                       <span
                         className={[
-                          "inline-flex max-w-full items-center rounded-full px-3 py-1 text-xs font-medium border",
+                          "inline-flex max-w-[170px] items-center truncate rounded-full px-3 py-1 text-xs font-medium border",
                           getAudienceBadgeClass(item.recipientMode),
                         ].join(" ")}
+                        title={audienceLabel}
                       >
                         {audienceLabel}
                       </span>
                     </TableCell>
-                    <TableCell className="px-4 py-3 align-middle whitespace-nowrap">
+                    <TableCell className="min-w-[110px] px-4 py-3 align-middle">
                       <span
                         className={[
-                          "inline-flex max-w-full items-center rounded-full px-3 py-1 text-xs font-medium border",
+                          "inline-flex max-w-[100px] items-center truncate rounded-full px-3 py-1 text-xs font-medium border",
                           getTypeBadgeClass(item.type),
                         ].join(" ")}
+                        title={item.type}
                       >
                         {item.type}
                       </span>
@@ -290,19 +287,21 @@ export default function NotificationPage() {
                         {item.status}
                       </span>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm whitespace-nowrap">
-                      <span
-                        title={
-                          item.hasScheduledAt
-                            ? `Scheduled for ${item.scheduledAt}`
-                            : item.status === "Scheduled"
-                              ? "Missing schedule time"
-                              : "Not applicable for sent or draft notifications"
-                        }
-                      >
-                        {item.scheduledAt}
-                      </span>
-                    </TableCell>
+                    {showScheduledColumn ? (
+                      <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm whitespace-nowrap">
+                        <span
+                          title={
+                            item.hasScheduledAt
+                              ? `Scheduled for ${item.scheduledAt}`
+                              : item.status === "Scheduled"
+                                ? "Missing schedule time"
+                                : "Not applicable for sent or draft notifications"
+                          }
+                        >
+                          {item.scheduledAt}
+                        </span>
+                      </TableCell>
+                    ) : null}
                     <TableCell className="px-4 py-3 text-[#2158A3] font-normal text-sm">
                       {item.createdAt}
                     </TableCell>
@@ -316,6 +315,17 @@ export default function NotificationPage() {
                         >
                           <FaRegEye className="h-4 w-4" />
                         </button>
+                        {item.status === "Draft" ? (
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/notification/${item.id}/edit`)}
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E8F3FF] text-[#0A3161] hover:bg-[#D6E8FF] transition-colors"
+                            aria-label="Edit draft"
+                            title="Edit draft"
+                          >
+                            <FaRegEdit className="h-4 w-4" />
+                          </button>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -323,7 +333,7 @@ export default function NotificationPage() {
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-gray-500 py-8">
+                <TableCell colSpan={tableColSpan} className="text-center text-gray-500 py-8">
                   <p>No notifications found</p>
                   {statusFilter === "scheduled" ? (
                     <p className="mt-2 text-xs text-[#5671A6]">
@@ -368,7 +378,7 @@ export default function NotificationPage() {
         <div>
           <p className="text-sm text-gray-600">
             Showing {displayLo}-{displayHi} of {ofCount} items
-            {searchTerm.trim() ? " (search on this page)" : ""}
+            {searchTerm.trim() ? " (search results)" : ""}
           </p>
         </div>
 
