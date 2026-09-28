@@ -142,7 +142,7 @@ function ResetPasswordForm() {
         <div className="mx-auto max-w-sm rounded-2xl border border-gray-100 bg-gray-50/80 p-4 text-xs text-gray-500">
           <div className="mb-1 flex items-center justify-center gap-2 font-medium text-gray-800">
             <Smartphone className="h-4 w-4 text-[#0A3161]" />
-            <span>Return to App</span>
+            <span>Return to Four Score</span>
           </div>
           <p className="leading-relaxed">
             You can safely close this browser window and open the{" "}
