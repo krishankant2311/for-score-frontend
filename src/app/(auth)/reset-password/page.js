@@ -104,18 +104,11 @@ function ResetPasswordForm() {
 
   if (done) {
     return (
-      <div>
+      <div className="py-2">
         <h1 className="mb-2 text-2xl font-bold text-gray-900">Password updated</h1>
-        <p className="mb-6 text-sm text-gray-500">
+        <p className="text-sm text-gray-600 leading-relaxed">
           Your password has been changed successfully. You can now sign in with your new password.
         </p>
-        <button
-          type="button"
-          onClick={() => router.replace("/login")}
-          className="w-full rounded-xl bg-[#0A3161] py-3 font-semibold text-white transition hover:bg-[#0A3161]/90"
-        >
-          Go to login
-        </button>
       </div>
     );
   }
