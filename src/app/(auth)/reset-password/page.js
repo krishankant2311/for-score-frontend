@@ -62,18 +62,18 @@ function ResetPasswordForm() {
 
       let res;
       try {
-        res = await axios.post(apiUrl("/api/admin/reset-password"), formData);
-      } catch (adminErr) {
-        // Fallback to user endpoint if token belongs to mobile user
-        const msg = adminErr?.response?.data?.message || "";
+        // Try user endpoint first (mobile users are primary)
+        res = await axios.post(apiUrl("/api/user/reset-password"), formData);
+      } catch (userErr) {
+        const msg = userErr?.response?.data?.message || "";
         if (
-          adminErr?.response?.status === 404 ||
-          msg.toLowerCase().includes("invalid reset token") ||
-          msg.toLowerCase().includes("token expired")
+          userErr?.response?.status === 404 ||
+          msg.toLowerCase().includes("invalid reset token")
         ) {
-          res = await axios.post(apiUrl("/api/user/reset-password"), formData);
+          // If not a regular user, try admin endpoint
+          res = await axios.post(apiUrl("/api/admin/reset-password"), formData);
         } else {
-          throw adminErr;
+          throw userErr;
         }
       }
 
