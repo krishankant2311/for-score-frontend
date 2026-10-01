@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FaRegEye } from "react-icons/fa";
 import { getAudienceLabel } from "../data";
 
 export default function ViewNotificationModal({ open, notification, onClose }) {
-  if (!open || !notification) return null;
-
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
   useEffect(() => {
@@ -20,6 +20,7 @@ export default function ViewNotificationModal({ open, notification, onClose }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
 
+  if (!open || !notification) return null;
   if (!isMounted) return null;
 
   return createPortal(
@@ -86,8 +87,21 @@ export default function ViewNotificationModal({ open, notification, onClose }) {
         </div>
 
         <div className="sticky bottom-0 bg-gray-50 border-t border-[#C8D7E9] px-6 py-4 rounded-b-2xl">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            {notification.status === "Draft" ? (
+              <Button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  router.push(`/notification/${notification.id}/edit`);
+                }}
+                className="px-5 bg-[#E8F3FF] hover:bg-[#D6E8FF] text-[#0A3161] font-semibold shadow-sm"
+              >
+                Edit Draft
+              </Button>
+            ) : null}
             <Button
+              type="button"
               onClick={onClose}
               className="px-5 bg-[#0A3161] hover:bg-[#0D3D7A] text-white font-semibold shadow-sm"
             >

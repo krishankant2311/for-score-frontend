@@ -27,6 +27,37 @@ function parseWorkoutPreferences(raw) {
     .filter(Boolean);
 }
 
+function formatUserHeight(raw) {
+  if (raw == null || raw === "") return "—";
+  const str = String(raw).trim();
+  if (str.includes("'") || str.toLowerCase().includes("ft")) return str;
+
+  const num = Number(str);
+  if (isNaN(num) || num <= 0) return str;
+
+  // If num > 96, stored in Centimeters (e.g. 170 cm, 163 cm)
+  if (num > 96) {
+    const totalInches = num / 2.54;
+    const feet = Math.floor(totalInches / 12);
+    const inches = Math.round(totalInches % 12);
+    return `${feet}' ${inches}" (${Math.round(num)} cm)`;
+  }
+
+  // Otherwise, stored in Inches (e.g. 67 in -> 5' 7")
+  const feet = Math.floor(num / 12);
+  const inches = Math.round(num % 12);
+  return `${feet}' ${inches}" (${num} in)`;
+}
+
+function formatUserWeight(raw) {
+  if (raw == null || raw === "") return "—";
+  const str = String(raw).trim();
+  if (str.toLowerCase().includes("lb") || str.toLowerCase().includes("kg")) return str;
+  const num = Number(str);
+  if (isNaN(num) || num <= 0) return str;
+  return `${num} lbs`;
+}
+
 function getSkillLevelBadgeClass(level) {
   const key = String(level ?? "").toLowerCase();
   if (key.includes("beginner")) return "bg-sky-50 text-sky-800 border-sky-200";
@@ -135,7 +166,9 @@ export default function ViewUserModal({ open, user, onClose }) {
                   Age
                 </label>
               </div>
-              <p className="mt-1 text-sm font-medium text-[#0A3161]">{user.age || "—"}</p>
+              <p className="mt-1 text-sm font-medium text-[#0A3161]">
+                {user.age ? `${user.age} yrs` : "—"}
+              </p>
             </div>
             <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm">
               <div className="flex items-center gap-3 mb-2">
@@ -146,7 +179,9 @@ export default function ViewUserModal({ open, user, onClose }) {
                   Height
                 </label>
               </div>
-              <p className="mt-1 text-sm font-medium text-[#0A3161]">{user.height || "—"}</p>
+              <p className="mt-1 text-sm font-medium text-[#0A3161]">
+                {formatUserHeight(user.height)}
+              </p>
             </div>
             <div className="bg-white rounded-xl border border-[#C8D7E9] p-4 shadow-sm">
               <div className="flex items-center gap-3 mb-2">
@@ -157,7 +192,9 @@ export default function ViewUserModal({ open, user, onClose }) {
                   Weight
                 </label>
               </div>
-              <p className="mt-1 text-sm font-medium text-[#0A3161]">{user.weight || "—"}</p>
+              <p className="mt-1 text-sm font-medium text-[#0A3161]">
+                {formatUserWeight(user.weight)}
+              </p>
             </div>
           </div>
 

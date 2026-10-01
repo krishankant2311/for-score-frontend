@@ -7,8 +7,6 @@ import { FaTrashAlt } from "react-icons/fa";
 import { getAudienceLabel } from "../data";
 
 export default function DeleteNotificationModal({ open, notification, onCancel, onConfirm }) {
-  if (!open || !notification) return null;
-
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
   useEffect(() => {
@@ -20,6 +18,7 @@ export default function DeleteNotificationModal({ open, notification, onCancel, 
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, onCancel]);
 
+  if (!open || !notification) return null;
   if (!isMounted) return null;
 
   return createPortal(

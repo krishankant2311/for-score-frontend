@@ -18,6 +18,8 @@ export function validateFoodName(name) {
 export const MACRO_LIMITS = {
   calories: { min: 0, max: 9999, label: "Calories", decimals: 0 },
   grams: { min: 0, max: 999, label: "grams", decimals: 2 },
+  servingGrams: { min: 0, max: 9999, label: "grams", decimals: 2 },
+  sodium: { min: 0, max: 99999, label: "mg", decimals: 1 },
 };
 
 /** Integer fields (calories). */

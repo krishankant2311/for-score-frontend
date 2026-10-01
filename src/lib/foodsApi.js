@@ -18,8 +18,36 @@ function throwFoodApiError(err, fallbackMessage) {
 
 export const FOOD_CATEGORIES = ["Protein", "Carbs", "Vegetables", "Fruit", "Fats", "Other"];
 
-export async function fetchAllFoods({ token, search = "", category = "" } = {}) {
-  const params = {};
+export const FOOD_MEAL_TYPES = [
+  "Breakfast",
+  "Morning Snack",
+  "Lunch",
+  "Evening Snack",
+  "Snack",
+  "Dinner",
+  "Other",
+];
+
+export async function fetchFoodCategories({ token } = {}) {
+  try {
+    const res = await axios.get(apiUrl("/api/admin/get-all-food-categories"), adminHeaders(token));
+    if (res?.data?.success && Array.isArray(res.data.result)) {
+      return res.data.result;
+    }
+    return [];
+  } catch (err) {
+    return [];
+  }
+}
+
+export async function fetchAllFoods({
+  token,
+  search = "",
+  category = "",
+  page = 1,
+  limit = 10,
+} = {}) {
+  const params = { page, limit };
   if (search?.trim()) params.search = search.trim();
   if (category && category !== "all") params.category = category;
 
@@ -32,7 +60,28 @@ export async function fetchAllFoods({ token, search = "", category = "" } = {}) 
     err.adminPayload = res?.data;
     throw err;
   }
-  return Array.isArray(res.data.result) ? res.data.result : [];
+
+  if (res.data.result && typeof res.data.result === "object" && Array.isArray(res.data.result.items)) {
+    return res.data.result;
+  }
+  if (Array.isArray(res.data.result)) {
+    const list = res.data.result;
+    const categoryCounts = {};
+    for (let i = 0; i < list.length; i++) {
+      const cat = list[i]?.category || "Other";
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    }
+    return {
+      items: list,
+      total: list.length,
+      page: 1,
+      limit: list.length,
+      totalPages: 1,
+      categoryCounts,
+      allCount: list.length,
+    };
+  }
+  return { items: [], total: 0, page: 1, limit, totalPages: 1, categoryCounts: {}, allCount: 0 };
 }
 
 export async function fetchFoodById(id, { token } = {}) {

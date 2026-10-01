@@ -56,7 +56,7 @@ export default function NotificationPage() {
   const [serverTotalPages, setServerTotalPages] = useState(0);
   const [statusCounts, setStatusCounts] = useState({ all: 0, sent: 0, scheduled: 0, draft: 0 });
 
-  const showScheduledColumn = statusFilter !== "draft";
+  const showScheduledColumn = statusFilter === "all" || statusFilter === "scheduled";
 
   useEffect(() => {
     const load = async () => {
@@ -209,8 +209,8 @@ export default function NotificationPage() {
             <TableRow className="border-b bg-[#F2F5FA]">
               <TableHead className="min-w-[180px] font-semibold text-[#2158A3] px-4 py-3">TITLE</TableHead>
               <TableHead className="min-w-[200px] font-semibold text-[#2158A3] px-4 py-3">MESSAGE</TableHead>
-              <TableHead className="min-w-[180px] px-4 py-3 font-semibold text-[#2158A3]">AUDIENCE</TableHead>
-              <TableHead className="min-w-[110px] px-4 py-3 font-semibold text-[#2158A3]">TYPE</TableHead>
+              <TableHead className="min-w-[200px] px-4 py-3 font-semibold text-[#2158A3]">AUDIENCE</TableHead>
+              <TableHead className="min-w-[120px] px-4 py-3 font-semibold text-[#2158A3]">TYPE</TableHead>
               <TableHead className="min-w-[100px] font-semibold text-[#2158A3] px-4 py-3">STATUS</TableHead>
               {showScheduledColumn ? (
                 <TableHead className="min-w-[150px] font-semibold text-[#2158A3] px-4 py-3">
@@ -252,10 +252,10 @@ export default function NotificationPage() {
                         {item.message || "—"}
                       </p>
                     </TableCell>
-                    <TableCell className="min-w-[180px] px-4 py-3 align-middle">
+                    <TableCell className="min-w-[200px] px-4 py-3 align-middle">
                       <span
                         className={[
-                          "inline-flex max-w-[170px] items-center truncate rounded-full px-3 py-1 text-xs font-medium border",
+                          "inline-flex max-w-[190px] items-center truncate rounded-full px-3 py-1 text-xs font-medium border",
                           getAudienceBadgeClass(item.recipientMode),
                         ].join(" ")}
                         title={audienceLabel}
@@ -263,10 +263,10 @@ export default function NotificationPage() {
                         {audienceLabel}
                       </span>
                     </TableCell>
-                    <TableCell className="min-w-[110px] px-4 py-3 align-middle">
+                    <TableCell className="min-w-[120px] px-4 py-3 align-middle">
                       <span
                         className={[
-                          "inline-flex max-w-[100px] items-center truncate rounded-full px-3 py-1 text-xs font-medium border",
+                          "inline-flex max-w-[110px] items-center truncate rounded-full px-3 py-1 text-xs font-medium border",
                           getTypeBadgeClass(item.type),
                         ].join(" ")}
                         title={item.type}
