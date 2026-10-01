@@ -40,16 +40,30 @@ export async function fetchFoodCategories({ token } = {}) {
   }
 }
 
+export async function fetchFoodBrands({ token } = {}) {
+  try {
+    const res = await axios.get(apiUrl("/api/admin/get-all-food-brands"), adminHeaders(token));
+    if (res?.data?.success && Array.isArray(res.data.result)) {
+      return res.data.result;
+    }
+    return [];
+  } catch (err) {
+    return [];
+  }
+}
+
 export async function fetchAllFoods({
   token,
   search = "",
   category = "",
+  brand = "",
   page = 1,
   limit = 10,
 } = {}) {
   const params = { page, limit };
   if (search?.trim()) params.search = search.trim();
   if (category && category !== "all") params.category = category;
+  if (brand && brand !== "all") params.brand = brand;
 
   const res = await axios.get(apiUrl("/api/admin/get-all-foods"), {
     ...adminHeaders(token),
